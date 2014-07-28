@@ -8,7 +8,8 @@ struct vhost_config {
   char *mysql_socket;
   char *php_mode;
   char *php_config;
-  time_t  added;
+  char *php_modules;
+  time_t added;
 };
 
 struct db_handler {

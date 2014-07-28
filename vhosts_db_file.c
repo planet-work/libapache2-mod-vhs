@@ -26,7 +26,7 @@ struct db_handler *get_dbh(char * db_path) {
 }
 
 
-int  clean_dbh(struct db_handler* db) {
+int clean_dbh(struct db_handler* db) {
     fclose(db->fd);
     fclose(db->fd_updated);
     return 0;
@@ -41,13 +41,15 @@ void free_vhost_config(struct vhost_config *conf) {
     free(conf->mysql_socket);
     free(conf->php_mode);
     free(conf->php_config);
+    free(conf->php_modules);
 }
 
 
 struct vhost_config *parse_line(char* line) {
-    static struct vhost_config conf = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,0};
-    char * tok = NULL;
+    static struct vhost_config conf = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0};
+    char * tok;
     int i = 0;
+    char * p2;
     char * sendmail_path;
     char * obasedir;
     char * mysql_socket;
@@ -57,109 +59,78 @@ struct vhost_config *parse_line(char* line) {
     if (*(line+strlen(line)-1) == '\n') {
          *(line+strlen(line)-1) = '\0';
     }
+
+    tok = malloc(sizeof(char) * strlen(line)+1);
    
-     
-    tok = strtok(line,delim); 
+    strcpy(tok, line);
+   
     conf.added = time(NULL);
-    
-    
-    while( tok != NULL ) {
+
+    while(1) {
+        p2 = strchr(tok, '|');
+        if(p2 != NULL)
+            *p2 = '\0';
+
         switch (i) {
-            
+
             case 0: // URI 
                 conf.uri = (char *) malloc(strlen(tok)+1);
                 memset(conf.uri,0,strlen(tok)+1);
                 strncpy(conf.uri,tok,strlen(tok));
                 break;
-                    
+
             case 1: // VHOST 
                 conf.vhost = (char *) malloc(strlen(tok)+1);
                 memset(conf.vhost,0,strlen(tok)+1);
                 strncpy(conf.vhost,tok,strlen(tok));
                 break;
-                
+
             case 2: // USER 
                 conf.user = (char *) malloc(strlen(tok)+1);
                 memset(conf.user,0,strlen(tok)+1);
                 strncpy(conf.user,tok,strlen(tok));
                 break;
-                
+
             case 3: // DIRECTORY 
                 conf.directory = (char *) malloc(strlen(tok)+1);
                 memset(conf.directory,0,strlen(tok)+1);
                 strncpy(conf.directory,tok,strlen(tok));
                 break;
-                
+
             case 4: // MYSQL_SOCKET 
                 conf.mysql_socket = (char *) malloc(strlen(tok)+1);
                 memset(conf.mysql_socket,0,strlen(tok)+1);
                 strncpy(conf.mysql_socket,tok,strlen(tok));
                 break;
-                
+
             case 5: // PHP_MODE 
                 conf.php_mode = (char *) malloc(strlen(tok)+1);
                 memset(conf.php_mode,0,strlen(tok)+1);
                 strncpy(conf.php_mode,tok,strlen(tok));
                 break;
-                
+
             case 6: // PHP_CONFIG 
                 has_phpconfig = 1;
                 //conf.php_config = (char *) malloc(strlen(tok)+1);
                 conf.php_config = (char *) malloc(2048);
-                memset(conf.php_config,0,strlen(tok)+1);
-                strncpy(conf.php_config,tok,strlen(tok));
+                memset(conf.php_config, 0, strlen(tok)+1);
+                strncpy(conf.php_config, tok, strlen(tok));
                 break;
 
             case 7: // PHP_MODULES
                 has_phpmodules = 1;
-                //conf.php_config = (char *) malloc(strlen(tok)+1);
-                //conf.php_config = (char *) malloc(2048);
-                //memset(conf.php_config,0,strlen(tok)+1);
-                //strncpy(conf.php_config,tok,strlen(tok));
+                conf.php_modules = (char *) malloc(strlen(tok)+1);
+                memset(conf.php_modules, 0, strlen(tok)+1);
+                strncpy(conf.php_modules, tok, strlen(tok));
                 break;
         }
-        
-        tok = strtok( NULL, delim);     
+
+        tok = p2 + 1;
+        if(p2 == NULL)
+            break;
         i++;
     }
-    
-    
-    
-    //
-    //  SET SECURE SENDMAIL AND OPEN_BASEDIR
-    //  PLANET-WORK
-    //
-   
-    /* 
-    sendmail_path = (char *) malloc(2048);
-    memset(sendmail_path,0,2048);
-    sprintf(sendmail_path,"sendmail_path=%s %s",SENDMAIL_PATH,conf.vhost);
-    if (has_phpconfig == 1) {
-        int size = strlen(conf.php_config) + strlen(sendmail_path) + 1;
-        strcat(conf.php_config,";");
-        strncat(conf.php_config,sendmail_path,strlen(sendmail_path));
-        free(sendmail_path);    
-    } else {
-        conf.php_config = sendmail_path;
-    }
-    */
 
-    /* Fix for PHP BUG http://bugs.php.net/bug.php?id=52312
-    obasedir = (char*) malloc(400);
-    memset(obasedir,0,400);
-    sprintf(obasedir,";open_basedir=%s:/home/%s/:/home/web/users/%s/",OPEN_BASEDIR,conf.user,conf.user);
-    strncat(conf.php_config,obasedir,strlen(obasedir));
-    free(obasedir);
-    */
-    
-    /*
-    mysql_socket = (char*) malloc(400);
-    memset(mysql_socket,0,400);
-    sprintf(mysql_socket,";mysql.default_socket=%s;mysqli.default_socket=%s",conf.mysql_socket,conf.mysql_socket);
-    strncat(conf.php_config,mysql_socket,strlen(mysql_socket));
-    free(mysql_socket);
-    */
-    
     return &conf;
     
 }

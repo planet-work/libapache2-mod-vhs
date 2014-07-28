@@ -12,7 +12,7 @@
 ##
 
 # In general you can use apxs, but on debian you should use apxs2
-APXS = apxs
+APXS = apxs2
 
 NAME = mod_vhs
 SRCS = mod_vhs.c mod_vhs_alias.c vhosts_db_file.c
@@ -29,8 +29,8 @@ INDENT = /usr/bin/indent
 # is redefining strangely some headers.... :/
 
 #CFLAGS= -DDEBIAN -I/usr/include/apr-0
-#CFLAGS+= -I/usr/local/include -I/usr/include/php5 -I/usr/include/php5/main/ -I/usr/include/php5/TSRM -I/usr/include/php5/Zend
-CFLAGS+= -I/usr/local/include -I/usr/include/php -I/usr/include/php/main/ -I/usr/include/php/TSRM -I/usr/include/php/Zend
+CFLAGS+= -I/usr/local/include -I/usr/include/php5 -I/usr/include/php5/main/ -I/usr/include/php5/TSRM -I/usr/include/php5/Zend
+#CFLAGS+= -I/usr/local/include -I/usr/include/php -I/usr/include/php/main/ -I/usr/include/php/TSRM -I/usr/include/php/Zend
 
 #CFLAGS+= -DVH_DEBUG 
 CFLAGS+= -DHAVE_MOD_PHP_SUPPORT 
@@ -40,7 +40,7 @@ CFLAGS+= -DHAVE_MOD_FLATFILE_SUPPORT
 #CFLAGS+= -DHAVE_LDAP_SUPPORT
 # If you have an old PHP (eg < 5.3.x), then you can enable safe_mode tricks
 # on your OWN risk
-CFLAGS+= -DOLD_PHP
+#CFLAGS+= -DOLD_PHP
 
 
 # Flags for compilation (Full Debug)

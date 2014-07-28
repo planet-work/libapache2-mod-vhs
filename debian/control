@@ -1,0 +1,15 @@
+Source: libapache2-mod-vhs
+Priority: extra
+Maintainer: Dejan SANADER <d.sanader@planet-work.com>
+Build-Depends: debhelper (>= 8.0.0), apache2-prefork-dev
+Standards-Version: 3.9.3
+Section: libs
+Homepage: http://www.planet-work.com/
+#Vcs-Git: git://git.debian.org/collab-maint/libapache2-mod-vhs.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/libapache2-mod-vhs.git;a=summary
+
+Package: libapache2-mod-vhs
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, apache2-mpm-prefork | apache2-mpm-itk
+Description: Mass virtualhosting, customized mod_vhs by PW

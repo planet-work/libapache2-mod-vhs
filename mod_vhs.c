@@ -63,6 +63,7 @@
 
 #include "mod_vhs.h"
 
+
 #ifdef HAVE_MOD_DBD_SUPPORT
 static ap_dbd_t *(*vhost_dbd_acquire_fn)(request_rec*) = NULL;
 static void (*vhost_dbd_prepare_fn)(server_rec*, const char*, const char*) = NULL;
@@ -773,11 +774,11 @@ int getflatfilehome(request_rec *r, vhs_config_rec *vhr, const char *hostname, m
 
 	/* servername */
 	reqc->name = apr_pstrdup(r->pool, p->vhost);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: server_name='%s'", reqc->name);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: server_name: %s", reqc->name);
 
 	/* document root */
 	reqc->docroot = apr_pstrdup(r->pool, p->directory);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: docroot=%s", reqc->docroot);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: docroot: %s", reqc->docroot);
 
 	/* suexec UID */
         struct passwd pwd; 
@@ -793,32 +794,35 @@ int getflatfilehome(request_rec *r, vhs_config_rec *vhr, const char *hostname, m
         sprintf(buf,"%d",pwd.pw_uid);
 	reqc->uid = apr_pstrdup(r->pool, buf);
         free(buf);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: uid=%s", reqc->uid);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: uid: %s", reqc->uid);
 
         /* GECOS : username */
         reqc->gecos = apr_pstrdup(r->pool, p->user);
-        VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: gecos=%s", reqc->gecos);
+        VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: gecos: %s", reqc->gecos);
 
 	/* suexec GID */
-	reqc->gid = apr_pstrdup(r->pool, "33");
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: gid=%s", reqc->gid);
-
-	/* phpopt_fromdb / options PHP */
-	reqc->phpoptions = apr_pstrdup(r->pool, p->php_config);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: phpoptions=%s", reqc->phpoptions);
+	reqc->gid = apr_pstrdup(r->pool, "1002");
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: gid: %s", reqc->gid);
 
 	/* associate domain */
 	reqc->associateddomain = apr_pstrdup(r->pool, p->vhost);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: associateddomain=%s", reqc->associateddomain);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: associateddomain: %s", reqc->associateddomain);
 
 	/* MySQL socket */
 	reqc->mysql_socket = apr_pstrdup(r->pool, p->mysql_socket);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: mysql_socket=%s", reqc->mysql_socket);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: mysql_socket: %s", reqc->mysql_socket);
 
 	/* PHP mode */
 	reqc->php_mode = apr_pstrdup(r->pool, p->php_mode);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: php_mode=%s", reqc->php_mode);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: php_mode: %s", reqc->php_mode);
 
+	/* phpopt_fromdb / options PHP */
+	reqc->phpoptions = apr_pstrdup(r->pool, p->php_config);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: php_config: %s", reqc->phpoptions);
+
+	/* PHP modules */
+	reqc->php_modules = apr_pstrdup(r->pool, p->php_modules);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: php_modules: %s", reqc->php_modules);
 
 	/* the vhost has been found, set vhost_found to VH_VHOST_INFOS_FOUND */
 	reqc->vhost_found = VH_VHOST_INFOS_FOUND;
@@ -954,7 +958,7 @@ static int vhs_itk_post_read(request_rec *r)
 		/* set the username - otherwise MPM-ITK will not work */
 		/* itk_username = apr_psprintf(r->pool, "%s", pw->pw_name); */
 		/* Why root ? */
-		itk_username = apr_psprintf(r->pool, "webmaster");
+		itk_username = apr_psprintf(r->pool, "test-cluster2");
        	        cfg->username = itk_username;
 		}
 	  VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: itk uid='%d' itk gid='%d' itk username='%s' after change", cfg->uid, cfg->gid, cfg->username);
@@ -1063,7 +1067,7 @@ static void vhs_suphp_config(request_rec *r, vhs_config_rec *vhr, char *path, ch
 /*
  * This function will configure on the fly the php like php.ini will do
  */
-static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, char *path, char *passwd, char* php_mode, char* mysql_socket)
+static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_request_t * reqc) //char *path, char *php_config, char* php_mode, char* mysql_socket, char* php_modules)
 {
     /* PLANET-WORK : Configure the PHP mode */
     extension_info *ext;
@@ -1074,19 +1078,29 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, char *path, ch
         return;
     }
 
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: path ? %s", path);
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: passwd ? %s", passwd);
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_mode ? %s", php_mode);
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: mysql_socket ? %s", mysql_socket);
+    module *php_module = ap_find_linked_module("mod_php5.c");
+
+    if (php_module == NULL) {
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_php_config: mod_php5.c is not loaded");
+        return;
+    }
+
+    
+
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: path ? %s", reqc->docroot);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: mysql_socket ? %s", reqc->mysql_socket);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_mode ? %s", reqc->php_mode);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_config ? %s", reqc->phpoptions);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_modules ? %s", reqc->php_modules);
 
     mime_dir_config *cfg    = (mime_dir_config *)ap_get_module_config(r->server->module_config, mime_module);
     mime_dir_config *dircfg = (mime_dir_config *)ap_get_module_config(r->per_dir_config, mime_module);
 
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: mime dircfg ? %s", dircfg->extension_mappings);
 
-    ext = (extension_info*) apr_hash_get(dircfg->extension_mappings,"html",APR_HASH_KEY_STRING);
+    ext = (extension_info*) apr_hash_get(dircfg->extension_mappings, "html", APR_HASH_KEY_STRING);
 
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Configuring PHP running mode %s",ext);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Configuring PHP running mode %s", ext);
 
    
     //ext->forced_type = (char*) malloc(35);
@@ -1119,8 +1133,8 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, char *path, ch
 	/*
 	 * Some Basic PHP stuff, thank to Igor Popov module
 	 */
-	apr_table_set(r->subprocess_env, "PHP_DOCUMENT_ROOT", path);
-	zend_alter_ini_entry("doc_root", sizeof("doc_root"), path, strlen(path), 4, 1);
+	apr_table_set(r->subprocess_env, "PHP_DOCUMENT_ROOT", reqc->docroot);
+	zend_alter_ini_entry("doc_root", sizeof("doc_root"), reqc->docroot, strlen(reqc->docroot), 4, 1);
 #ifdef OLD_PHP
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI3a");
 	/*
@@ -1183,15 +1197,21 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, char *path, ch
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP from DB engaged");
 		char           *retval;
 		char           *state;
-		char           *myphpoptions;
+		char           *my_phpconfig;
+		char           *my_phpmodules;
 
-		myphpoptions = apr_pstrdup(r->pool, passwd);
-		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: DB => %s", myphpoptions);
+		my_phpconfig = apr_pstrdup(r->pool, reqc->phpoptions);
 
-		if ((ap_strchr(myphpoptions, ';') != NULL) && (ap_strchr(myphpoptions, '=') != NULL)) {
-			/* Getting values for PHP there so we can proceed */
+		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: DB => %s", my_phpconfig);
 
-			retval = apr_strtok(myphpoptions, ";", &state);
+                /* Custom PHP settings */ 
+                if (my_phpconfig == NULL) {
+                     my_phpconfig = "";
+                }
+ 
+		if ((ap_strchr(my_phpconfig, ';') != NULL) && (ap_strchr(my_phpconfig, '=') != NULL)) {
+
+			retval = apr_strtok(my_phpconfig, ";", &state);
 			while (retval != NULL) {
 				char           *key = NULL;
 				char           *val = NULL;
@@ -1202,19 +1222,58 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, char *path, ch
                                 if (val != NULL) {
 				    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", key, val);
   				    zend_alter_ini_entry(key, strlen(key)+1, val, strlen(val), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+                                /*
                                 } else {
 				    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Zend PHP Module => %s", key);
                                     char *modname = malloc(strlen(key)+4);
-                                    sprintf(modname,"%s.so",key); 
+                                    sprintf(modname,"%s.so", key); 
   				    zend_alter_ini_entry("extension", strlen("extension")+1, modname, strlen(modname)+4, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-                                }
+                                } */
 				retval = apr_strtok(NULL, ";", &state);
 			}
 		}
 		else {
 			VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: no PHP stuff found.");
 		}
-                zend_alter_ini_entry("pdo_mysql.default_socket", strlen("pdo_mysql.default_socket")+1, mysql_socket, strlen(mysql_socket), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+
+                /* Settings depending on mysql socket value */
+		zend_alter_ini_entry("mysql.default_socket", strlen("mysql.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+		zend_alter_ini_entry("mysqli.default_socket", strlen("mysqli.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+		zend_alter_ini_entry("pdo_mysql.default_socket", strlen("pdo_mysql.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+
+                /* sendmail_secure */
+                char *sendmail_path = (char*) malloc(strlen("/etc/apache2/conf/sendmail-secure ") + strlen(reqc->associateddomain) + 1);
+                strcpy(sendmail_path, "/etc/apache2/conf/sendmail-secure ");
+                strcat(sendmail_path, reqc->associateddomain);
+		zend_alter_ini_entry("sendmail_path", strlen("sendmail_path")+1, sendmail_path, strlen(sendmail_path)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+                free(sendmail_path);
+
+                /* Redis sessions */
+                char *save_path = (char*) malloc(strlen("tcp://172.16.8.250:6379?prefix=phpredis_") + strlen(reqc->gecos) + 1);
+                strcpy(save_path, "tcp://172.16.8.250:6379?prefix=phpredis_");
+                strcat(save_path, reqc->gecos);
+		zend_alter_ini_entry("session.save_path", strlen("session.save_path")+1, save_path, strlen(save_path)+1, ZEND_INI_PERDIR, ZEND_INI_STAGE_ACTIVATE);
+                VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: session.save_path: %s", save_path);
+                free(save_path);
+           
+
+                /* Custom modules : doesn't work, PHP modules can't be loaded on the fly */
+		my_phpmodules = apr_pstrdup(r->pool, reqc->php_modules);
+
+		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_modules: DB => %s", my_phpmodules);
+
+		if (my_phpmodules != "") {
+			retval = apr_strtok(my_phpmodules, ",", &state);
+			while (retval != NULL) {
+                                char* modname = malloc(strlen(retval)+4);
+                                sprintf(modname, "%s.so", retval); 
+				VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_modules: Zend PHP Module => %s", modname);
+  				zend_alter_ini_entry("extension", strlen("extension")+1, modname, strlen(modname)+4, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+				retval = apr_strtok(NULL, ",", &state);
+			}
+
+		}
+                
 	}
 
 }
@@ -1551,7 +1610,7 @@ static int vhs_translate_name(request_rec * r)
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: translated http://%s%s to file %s", host, r->uri, r->filename);
 
 #ifdef HAVE_MOD_PHP_SUPPORT
-	vhs_php_config(r, vhr, reqc->docroot, reqc->phpoptions, reqc->php_mode,reqc->mysql_socket);
+	vhs_php_config(r, vhr, reqc);
 #endif /* HAVE_MOD_PHP_SUPPORT */
 
 #ifdef HAVE_MOD_SUPHP_SUPPORT

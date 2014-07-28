@@ -256,6 +256,7 @@ typedef struct mod_vhs_request_t {
 #ifdef HAVE_MOD_FLATFILE_SUPPORT
     char *mysql_socket;                 /* Path for MySQL socket */
     char *php_mode;                     /* Mode for PHP */
+    char *php_modules;			/* Modules for PHP */
     char *gecos;                     /* GECOS : username */
 #endif
 } mod_vhs_request_t;

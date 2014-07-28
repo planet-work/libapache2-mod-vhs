@@ -1222,6 +1222,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
                                 if (val != NULL) {
 				    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", key, val);
   				    zend_alter_ini_entry(key, strlen(key)+1, val, strlen(val), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+                                }
                                 /*
                                 } else {
 				    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Zend PHP Module => %s", key);

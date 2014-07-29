@@ -1067,7 +1067,7 @@ static void vhs_suphp_config(request_rec *r, vhs_config_rec *vhr, char *path, ch
 /*
  * This function will configure on the fly the php like php.ini will do
  */
-static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_request_t * reqc) //char *path, char *php_config, char* php_mode, char* mysql_socket, char* php_modules)
+static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_request_t * reqc)
 {
     /* PLANET-WORK : Configure the PHP mode */
     extension_info *ext;
@@ -1085,8 +1085,6 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
         return;
     }
 
-    
-
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: path ? %s", reqc->docroot);
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: mysql_socket ? %s", reqc->mysql_socket);
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_mode ? %s", reqc->php_mode);
@@ -1098,25 +1096,25 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: mime dircfg ? %s", dircfg->extension_mappings);
 
-    ext = (extension_info*) apr_hash_get(dircfg->extension_mappings, "html", APR_HASH_KEY_STRING);
+    ext = (extension_info*) apr_hash_get(dircfg->extension_mappings, "php", APR_HASH_KEY_STRING);
 
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Configuring PHP running mode %s", ext);
 
    
-    //ext->forced_type = (char*) malloc(35);
-    //VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Configuring PHP running mode OKI");
+    ext->forced_type = (char*) malloc(35);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Configuring PHP running mode OKI");
     /* SHOULD FREE ext->forced_type ?? */
     //free(ext->forced_type);
-    //VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_mode = %s",php_mode);
-    //if (strcmp(php_mode,"php5-cgi") == 0) {
-    //    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0a");
-    //    strcpy(ext->forced_type,"application/x-httpd-php5");
-    //} else {
-    //    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0b");
-    //    strcpy(ext->forced_type,"application/x-httpd-php");
-    //    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0ba");
-    //}
-    //VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: NEW php_mode = %s",ext->forced_type);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_mode = %s", reqc->php_mode);
+    if (strcmp(reqc->php_mode,"php5-cgi") == 0) {
+        VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0a");
+        strcpy(ext->forced_type,"application/x-httpd-php5");
+    } else {
+        VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0b");
+        strcpy(ext->forced_type,"application/x-httpd-php");
+        VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0ba");
+    }
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: NEW php_mode = %s", ext->forced_type);
 
     
     //

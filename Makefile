@@ -67,6 +67,12 @@ default: all
 
 all: install
 
+test: test.c vhosts_db_file.c
+	gcc -c $(CFLAGS) -ggdb test.c
+	gcc -c $(CFLAGS) -ggdb vhosts_db_file.c
+	gcc -o test -ggdb test.o vhosts_db_file.o
+	
+
 install: $(SRCS)
 #	$(APXS) -i -a -c $(LDFLAGS) $(CFLAGS) $(SRCS)
 	$(APXS) -c $(LDFLAGS) $(CFLAGS) $(SRCS)

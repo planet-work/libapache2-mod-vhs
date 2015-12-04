@@ -45,8 +45,8 @@ void free_vhost_config(struct vhost_config *conf) {
 }
 
 
-struct vhost_config *parse_line(char* line) {
-    static struct vhost_config conf = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0};
+struct vhost_config *parse_conf_line(char* line) {
+    struct vhost_config *conf = malloc (sizeof (struct vhost_config));//  {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0};
     char * tok;
     int i = 0;
     char * p2;
@@ -55,6 +55,13 @@ struct vhost_config *parse_line(char* line) {
     char * mysql_socket;
     int has_phpconfig = 0;
     int has_phpmodules = 0;
+
+
+    //fprintf(stderr,"***** parsing line************* \n");
+    //fflush(stderr);
+    //fprintf(stderr,"***** LINE %s \n", line);
+    //fflush(stderr);
+
     
     if (*(line+strlen(line)-1) == '\n') {
          *(line+strlen(line)-1) = '\0';
@@ -64,7 +71,9 @@ struct vhost_config *parse_line(char* line) {
    
     strcpy(tok, line);
    
-    conf.added = time(NULL);
+    conf->added = time(NULL);
+
+
 
     while(1) {
         p2 = strchr(tok, '|');
@@ -74,54 +83,54 @@ struct vhost_config *parse_line(char* line) {
         switch (i) {
 
             case 0: // URI 
-                conf.uri = (char *) malloc(strlen(tok)+1);
-                memset(conf.uri,0,strlen(tok)+1);
-                strncpy(conf.uri,tok,strlen(tok));
+                conf->uri = (char *) malloc(strlen(tok)+1);
+                memset(conf->uri,0,strlen(tok)+1);
+                strncpy(conf->uri,tok,strlen(tok));
                 break;
 
             case 1: // VHOST 
-                conf.vhost = (char *) malloc(strlen(tok)+1);
-                memset(conf.vhost,0,strlen(tok)+1);
-                strncpy(conf.vhost,tok,strlen(tok));
+                conf->vhost = (char *) malloc(strlen(tok)+1);
+                memset(conf->vhost,0,strlen(tok)+1);
+                strncpy(conf->vhost,tok,strlen(tok));
                 break;
 
             case 2: // USER 
-                conf.user = (char *) malloc(strlen(tok)+1);
-                memset(conf.user,0,strlen(tok)+1);
-                strncpy(conf.user,tok,strlen(tok));
+                conf->user = (char *) malloc(strlen(tok)+1);
+                memset(conf->user,0,strlen(tok)+1);
+                strncpy(conf->user,tok,strlen(tok));
                 break;
 
             case 3: // DIRECTORY 
-                conf.directory = (char *) malloc(strlen(tok)+1);
-                memset(conf.directory,0,strlen(tok)+1);
-                strncpy(conf.directory,tok,strlen(tok));
+                conf->directory = (char *) malloc(strlen(tok)+1);
+                memset(conf->directory,0,strlen(tok)+1);
+                strncpy(conf->directory,tok,strlen(tok));
                 break;
 
             case 4: // MYSQL_SOCKET 
-                conf.mysql_socket = (char *) malloc(strlen(tok)+1);
-                memset(conf.mysql_socket,0,strlen(tok)+1);
-                strncpy(conf.mysql_socket,tok,strlen(tok));
+                conf->mysql_socket = (char *) malloc(strlen(tok)+1);
+                memset(conf->mysql_socket,0,strlen(tok)+1);
+                strncpy(conf->mysql_socket,tok,strlen(tok));
                 break;
 
             case 5: // PHP_MODE 
-                conf.php_mode = (char *) malloc(strlen(tok)+1);
-                memset(conf.php_mode,0,strlen(tok)+1);
-                strncpy(conf.php_mode,tok,strlen(tok));
+                conf->php_mode = (char *) malloc(strlen(tok)+1);
+                memset(conf->php_mode,0,strlen(tok)+1);
+                strncpy(conf->php_mode,tok,strlen(tok));
                 break;
 
             case 6: // PHP_CONFIG 
                 has_phpconfig = 1;
-                //conf.php_config = (char *) malloc(strlen(tok)+1);
-                conf.php_config = (char *) malloc(2048);
-                memset(conf.php_config, 0, strlen(tok)+1);
-                strncpy(conf.php_config, tok, strlen(tok));
+                //conf->php_config = (char *) malloc(strlen(tok)+1);
+                conf->php_config = (char *) malloc(2048);
+                memset(conf->php_config, 0, strlen(tok)+1);
+                strncpy(conf->php_config, tok, strlen(tok));
                 break;
 
             case 7: // PHP_MODULES
                 has_phpmodules = 1;
-                conf.php_modules = (char *) malloc(strlen(tok)+1);
-                memset(conf.php_modules, 0, strlen(tok)+1);
-                strncpy(conf.php_modules, tok, strlen(tok));
+                conf->php_modules = (char *) malloc(strlen(tok)+1);
+                memset(conf->php_modules, 0, strlen(tok)+1);
+                strncpy(conf->php_modules, tok, strlen(tok));
                 break;
         }
 
@@ -130,8 +139,9 @@ struct vhost_config *parse_line(char* line) {
             break;
         i++;
     }
-
-    return &conf;
+    //fprintf(stderr," ======================================================= \n");
+    //fflush(stderr);
+    return conf;
     
 }
 
@@ -178,8 +188,9 @@ struct vhost_config *vhost_getconfig(struct db_handler *dbh, char *host) {
     static FILE * fd = NULL;
     struct vhost_config *conf = NULL;
     struct stat sts;
-    
-     //fprintf(stderr," ------------------- GETTING HOST CONFIG %s ---------------\n",host);
+    char * ret;
+
+    //fprintf(stderr," ------------------- GETTING HOST CONFIG %s ---------------\n",host);
     
     char lastc = *(host + strlen(host) - 1);
     if (lastc == '.' || lastc == ',' || lastc == '\n') {
@@ -229,6 +240,8 @@ struct vhost_config *vhost_getconfig(struct db_handler *dbh, char *host) {
        fd_updated = dbh->fd_updated;
        fseek ( fd_updated , 0 , SEEK_SET );
     }
+    //fprintf(stderr,"%i -----Free dbh_updated\n",getpid());
+    //fflush(stderr);
     free(dbh_updated); 
     
     while(fd_updated) {
@@ -242,9 +255,11 @@ struct vhost_config *vhost_getconfig(struct db_handler *dbh, char *host) {
             if (conf) {
                 free_vhost_config(conf);
             }
-            conf = parse_line(line);
+            conf = parse_conf_line(line);
         } 
     }
+
+
     
     if (conf) {
         free(line);
@@ -257,6 +272,9 @@ struct vhost_config *vhost_getconfig(struct db_handler *dbh, char *host) {
      * MAIN DB FILE (big) 
      * 
      */
+
+    //fprintf(stderr,"%i ----- looking in main file \n",getpid());
+    //fflush(stderr);
 
     if (stat (dbh->dbh, &sts) == 0) {
          if (dbh->fd_modified > 0 && dbh->fd_modified != sts.st_mtime) {
@@ -282,26 +300,32 @@ struct vhost_config *vhost_getconfig(struct db_handler *dbh, char *host) {
     }
     dbh->counter += 1;
     
+    //fprintf(stderr," **** Looping over lines ******\n");
     while(1)
     {
     	if(feof(fd)) {
             free(line);
-    		line = NULL;
-    		break;
+    	    line = NULL;
+    	    break;
     	}
         
-        fgets(line, 1023, fd);
+        if (fgets(line, 1023, fd) == NULL) {
+             break;
+        }
         
         if (uri_match(line,host) == 1) {
-            conf = parse_line(line);
-        } 
-        
+            //fprintf(stderr," found marching line ; %s \n", line);
+            //fflush(stderr); 
+            conf = parse_conf_line(line);
+        }
         if (conf) {
+            //fprintf(stderr," found conf : %s ))))))) %i\n", line,conf);
+            //fflush(stderr); 
             break;
         }
     }
     
-    
-    free(line);
+      
+    //free(line);
     return conf;
 }

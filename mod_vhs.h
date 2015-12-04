@@ -139,6 +139,17 @@ typedef struct {
     int use_path_info;
 } mime_dir_config;
 
+typedef struct {
+    HashTable config;
+} php_conf_rec;
+
+typedef struct {
+    char *value;
+    size_t value_len;
+    char status;
+    char htaccess;
+} php_dir_entry;
+
 
 typedef struct extension_info {
     char *forced_type;                /* Additional AddTyped stuff */

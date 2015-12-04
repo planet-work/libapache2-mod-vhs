@@ -256,7 +256,7 @@ vhs_merge_server_config(apr_pool_t * p, void *parentv, void *childv)
  */
 static const char * set_field(cmd_parms * parms, void *mconfig, const char *arg)
 {
-	int		pos = (int) parms->info;
+	int		pos = (uintptr_t) parms->info;
 
 #ifdef HAVE_MOD_DBD_SUPPORT
 	static unsigned int label_num = 0;
@@ -464,7 +464,7 @@ static const char *mod_vhs_ldap_parse_url(cmd_parms *cmd, void *dummy, const cha
  */
 static const char * set_flag(cmd_parms * parms, void *mconfig, int flag)
 {
-	int		pos = (int)parms->info;
+	int		pos = (uintptr_t)parms->info;
 	vhs_config_rec *vhr = (vhs_config_rec *) ap_get_module_config(parms->server->module_config, &vhs_module);
 
 	/*	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, parms->server,
@@ -733,11 +733,11 @@ int getmoddbdhome(request_rec *r, vhs_config_rec *vhr, const char *hostname, mod
  */
 int getflatfilehome(request_rec *r, vhs_config_rec *vhr, const char *hostname, mod_vhs_request_t *reqc)
 {
-	const char     		*host = 0;
+	char     		*host = 0;
 
 	apr_status_t rv = 0;
 	//db_handler *dbh;
-        struct vhost_config  *p;
+        const struct vhost_config  *p;
 
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome --------------------------------------------");
 
@@ -763,14 +763,16 @@ int getflatfilehome(request_rec *r, vhs_config_rec *vhr, const char *hostname, m
 	    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "getflatfilehome: Failed to acquire database connection to look up host '%s'", host);
 	    return DECLINED;
 	}
-
+         VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: found line, getting config for '%s'", host);
         p = vhost_getconfig(dbh,host);
 
-        if (p == NULL) {
+        if (p == NULL || p < 0) {
+            VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: not config found for '%s'", host);
             p = vhost_getconfig(dbh,vhr->default_host);
-            VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: get nothing for '%s' (%i)", host,p);
+            //VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: got nothing for '%s' (%i)", host,p);
         }
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: dbd is ok");
+	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: dbd is ok :::: %i",p);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "getflatfilehome: dbd is ok ::::VHOST  %s",p->vhost);
 
 	/* servername */
 	reqc->name = apr_pstrdup(r->pool, p->vhost);
@@ -852,7 +854,7 @@ static int vhs_itk_post_read(request_rec *r)
 	mod_vhs_request_t *reqc;
 
 	reqc = ap_get_module_config(r->request_config, &vhs_module);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: BEGIN2 %i", reqc);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: BEGIN2 ");
 	if (reqc)
 	  return OK;
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: BEGIN3 ");
@@ -943,7 +945,7 @@ static int vhs_itk_post_read(request_rec *r)
 
           VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: GOT ITK CONFIG");
 
-	  VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: itk uid='%d' itk gid='%d' itk username='%i' before change", cfg->uid, cfg->gid, cfg->username);
+	  VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: itk uid='%d' itk gid='%d' itk username='%s' before change", cfg->uid, cfg->gid, cfg->username);
 	if ((libhome_uid == -1 || libhome_gid == -1)) { 
                         VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: ICI  : -1 || -1");
 			cfg->uid = vhr->itk_defuid;
@@ -1071,6 +1073,23 @@ static void vhs_suphp_config(request_rec *r, vhs_config_rec *vhr, char *path, ch
 /*
  * This function will configure on the fly the php like php.ini will do
  */
+
+static void vhs_php_ini(char *name, char* value) {
+#ifdef VH_PHP7
+        php_conf_rec *d = NULL;
+        php_dir_entry e;
+        zend_string *key = zend_string_init(name, strlen(name), 0); 
+	if (zend_alter_ini_entry_chars(key, value, strlen(value), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE) != SUCCESS) {
+             //fprintf(stderr,"Unable to set %s=%s\n", key->val,value);
+        }
+        zend_string_release(key);
+
+#else
+	zend_alter_ini_entry(conf, strlen(conf), value, strlen(value), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+#endif
+    
+}
+
 static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_request_t * reqc)
 {
     /* PLANET-WORK : Configure the PHP mode */
@@ -1143,11 +1162,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 	 * Some Basic PHP stuff, thank to Igor Popov module
 	 */
 	apr_table_set(r->subprocess_env, "PHP_DOCUMENT_ROOT", reqc->docroot);
-#ifdef VH_PHP7
-	zend_alter_ini_entry("doc_root", reqc->docroot, 4,1);
-#else
-	zend_alter_ini_entry("doc_root", sizeof("doc_root"), reqc->docroot, strlen(reqc->docroot), 4, 1);
-#endif
+        vhs_php_ini("doc_root",reqc->docroot);
 #ifdef OLD_PHP
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI3a");
 	/*
@@ -1195,11 +1210,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 	 */
 	if (vhr->display_errors) {
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP display_errors engaged");
-#ifdef VH_PHP7
-        	zend_alter_ini_entry("display_errors", "1", ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-#else
-		zend_alter_ini_entry("display_errors", 10, "1", 1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-#endif
+                vhs_php_ini("display_errors", "1");
 	} else {
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP display_errors inactive defaulting to php.ini values");
 	}
@@ -1238,11 +1249,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 				val = apr_strtok(NULL, "=", &strtokstate);
                                 if (val != NULL) {
 				    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", key, val);
-#ifdef VH_PHP7
-  				    zend_alter_ini_entry(key, val, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-#else
-  				    zend_alter_ini_entry(key, strlen(key)+1, val, strlen(val), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-#endif
+                                    vhs_php_ini(key, val);
                                 }
                                 /*
                                 } else {
@@ -1259,43 +1266,28 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 		}
 
                 /* Settings depending on mysql socket value */
-#ifdef VH_PHP7
-		zend_alter_ini_entry("mysql.default_socket", reqc->mysql_socket, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-		zend_alter_ini_entry("mysqli.default_socket", reqc->mysql_socket, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-		zend_alter_ini_entry("pdo_mysql.default_socket", reqc->mysql_socket, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-#else
-		zend_alter_ini_entry("mysql.default_socket", strlen("mysql.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-		zend_alter_ini_entry("mysqli.default_socket", strlen("mysqli.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-		zend_alter_ini_entry("pdo_mysql.default_socket", strlen("pdo_mysql.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-#endif
-
+                vhs_php_ini("mysql.default_socket", reqc->mysql_socket);
+                vhs_php_ini("mysqli.default_socket", reqc->mysql_socket);
+                vhs_php_ini("pdo_mysql.default_socket", reqc->mysql_socket);
                 /* sendmail_secure */
                 char *sendmail_path = (char*) malloc(strlen("/etc/apache2/conf/sendmail-secure ") + strlen(reqc->associateddomain) + 1);
                 strcpy(sendmail_path, "/etc/apache2/conf/sendmail-secure ");
                 strcat(sendmail_path, reqc->associateddomain);
-#ifdef VH_PHP7
-		zend_alter_ini_entry("sendmail_path", sendmail_path, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-#else
-		zend_alter_ini_entry("sendmail_path", strlen("sendmail_path")+1, sendmail_path, strlen(sendmail_path)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-#endif
+                vhs_php_ini("sendmail_path", sendmail_path);
                 free(sendmail_path);
 
                 /* Redis sessions */
                 char *save_path = (char*) malloc(strlen("tcp://172.16.8.1:6379?prefix=phpredis_") + strlen(reqc->gecos) + 1);
                 strcpy(save_path, "tcp://172.16.8.1:6379?prefix=phpredis_");
                 strcat(save_path, reqc->gecos);
-#ifdef VH_PHP7
-		zend_alter_ini_entry("session.save_path", save_path, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-		zend_alter_ini_entry("session.save_handler", "redis", ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
-#else
-		zend_alter_ini_entry("session.save_path", strlen("session.save_path")+1, save_path, strlen(save_path)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-		zend_alter_ini_entry("session.save_handler", strlen("session.save_handler")+1, "redis", strlen("redis")+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-#endif
+		vhs_php_ini("session.save_path", save_path);
+		vhs_php_ini("session.save_handler", "redis");
                 VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: session.save_path: %s", save_path);
-                free(save_path);
+                //free(save_path);
            
 
                 /* Custom modules : doesn't work, PHP modules can't be loaded on the fly */
+/*
 		my_phpmodules = apr_pstrdup(r->pool, reqc->php_modules);
 
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_modules: DB => %s", my_phpmodules);
@@ -1316,7 +1308,9 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 
 		}
                 
+*/
 	}
+
 
 }
 #endif				/* HAVE_MOD_PHP_SUPPORT */

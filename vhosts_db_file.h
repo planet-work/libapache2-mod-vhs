@@ -1,4 +1,5 @@
 #include <time.h>
+#include <stdio.h>
 
 struct vhost_config {
   char *uri;

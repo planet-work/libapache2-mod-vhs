@@ -584,9 +584,9 @@ static int vhs_init_handler(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * 
 	unsigned short int itk_enable = 1;
 	server_rec *sp;
 
-	module *mpm_itk_module = ap_find_linked_module("itk.c");
+	module *mpm_itk_module = ap_find_linked_module("mpm_itk.c");
 	if (mpm_itk_module == NULL) {
-		ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "vhs_init_handler: itk.c is not loaded");
+		ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "vhs_init_handler: mpm_itk.c is not loaded");
 		itk_enable = 0;
 	}
 
@@ -926,13 +926,15 @@ static int vhs_itk_post_read(request_rec *r)
 	}
 
        /* If ITK support is not enabled, then don't process request */
+       VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: itk enabled ? %i", vhr->itk_enable);
+       VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: ITK ENABLED ?");
 	if (vhr->itk_enable) {
                 VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: has ITK");
-       	module *mpm_itk_module = ap_find_linked_module("itk.c");
+       	module *mpm_itk_module = ap_find_linked_module("mpm_itk.c");
                 VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: GOT ITK MODULE");
        
 		if (mpm_itk_module == NULL) {
-			ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_itk_post_read: itk.c is not loaded");
+			ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_itk_post_read: mpm_itk.c is not loaded");
 			return HTTP_INTERNAL_SERVER_ERROR;
 		}
        itk_conf *cfg = (itk_conf *) ap_get_module_config(r->per_dir_config, mpm_itk_module);
@@ -962,7 +964,9 @@ static int vhs_itk_post_read(request_rec *r)
        	        cfg->username = itk_username;
 		}
 	  VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: itk uid='%d' itk gid='%d' itk username='%s' after change", cfg->uid, cfg->gid, cfg->username);
-	}
+	} else {
+            VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: ITK FAILED");
+        }
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: END ***");
 
        // PLANET-WORK - Setup some variables for CGI scripts //
@@ -1078,10 +1082,14 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
         return;
     }
 
+#ifdef VH_PHP7
+    module *php_module = ap_find_linked_module("mod_php7.c");
+#else
     module *php_module = ap_find_linked_module("mod_php5.c");
+#endif
 
     if (php_module == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_php_config: mod_php5.c is not loaded");
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_php_config: mod_php[57].c is not loaded");
         return;
     }
 
@@ -1091,6 +1099,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_config ? %s", reqc->phpoptions);
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_modules ? %s", reqc->php_modules);
 
+    /*
     mime_dir_config *cfg    = (mime_dir_config *)ap_get_module_config(r->server->module_config, mime_module);
     mime_dir_config *dircfg = (mime_dir_config *)ap_get_module_config(r->per_dir_config, mime_module);
 
@@ -1103,8 +1112,10 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
    
     ext->forced_type = (char*) malloc(35);
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Configuring PHP running mode OKI");
+    */
     /* SHOULD FREE ext->forced_type ?? */
     //free(ext->forced_type);
+    /*
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_mode = %s", reqc->php_mode);
     if (strcmp(reqc->php_mode,"php5-cgi") == 0) {
         VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0a");
@@ -1115,7 +1126,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
         VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0ba");
     }
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: NEW php_mode = %s", ext->forced_type);
-
+    */
     
     //
     //VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI0d");
@@ -1132,7 +1143,11 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 	 * Some Basic PHP stuff, thank to Igor Popov module
 	 */
 	apr_table_set(r->subprocess_env, "PHP_DOCUMENT_ROOT", reqc->docroot);
+#ifdef VH_PHP7
+	zend_alter_ini_entry("doc_root", reqc->docroot, 4,1);
+#else
 	zend_alter_ini_entry("doc_root", sizeof("doc_root"), reqc->docroot, strlen(reqc->docroot), 4, 1);
+#endif
 #ifdef OLD_PHP
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: ICI3a");
 	/*
@@ -1180,7 +1195,11 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 	 */
 	if (vhr->display_errors) {
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP display_errors engaged");
+#ifdef VH_PHP7
+        	zend_alter_ini_entry("display_errors", "1", ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+#else
 		zend_alter_ini_entry("display_errors", 10, "1", 1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+#endif
 	} else {
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP display_errors inactive defaulting to php.ini values");
 	}
@@ -1219,7 +1238,11 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 				val = apr_strtok(NULL, "=", &strtokstate);
                                 if (val != NULL) {
 				    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", key, val);
+#ifdef VH_PHP7
+  				    zend_alter_ini_entry(key, val, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+#else
   				    zend_alter_ini_entry(key, strlen(key)+1, val, strlen(val), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+#endif
                                 }
                                 /*
                                 } else {
@@ -1236,22 +1259,38 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 		}
 
                 /* Settings depending on mysql socket value */
+#ifdef VH_PHP7
+		zend_alter_ini_entry("mysql.default_socket", reqc->mysql_socket, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+		zend_alter_ini_entry("mysqli.default_socket", reqc->mysql_socket, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+		zend_alter_ini_entry("pdo_mysql.default_socket", reqc->mysql_socket, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+#else
 		zend_alter_ini_entry("mysql.default_socket", strlen("mysql.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
 		zend_alter_ini_entry("mysqli.default_socket", strlen("mysqli.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
 		zend_alter_ini_entry("pdo_mysql.default_socket", strlen("pdo_mysql.default_socket")+1, reqc->mysql_socket, strlen(reqc->mysql_socket)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+#endif
 
                 /* sendmail_secure */
                 char *sendmail_path = (char*) malloc(strlen("/etc/apache2/conf/sendmail-secure ") + strlen(reqc->associateddomain) + 1);
                 strcpy(sendmail_path, "/etc/apache2/conf/sendmail-secure ");
                 strcat(sendmail_path, reqc->associateddomain);
+#ifdef VH_PHP7
+		zend_alter_ini_entry("sendmail_path", sendmail_path, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+#else
 		zend_alter_ini_entry("sendmail_path", strlen("sendmail_path")+1, sendmail_path, strlen(sendmail_path)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+#endif
                 free(sendmail_path);
 
                 /* Redis sessions */
-                char *save_path = (char*) malloc(strlen("tcp://172.16.8.250:6379?prefix=phpredis_") + strlen(reqc->gecos) + 1);
-                strcpy(save_path, "tcp://172.16.8.250:6379?prefix=phpredis_");
+                char *save_path = (char*) malloc(strlen("tcp://172.16.8.1:6379?prefix=phpredis_") + strlen(reqc->gecos) + 1);
+                strcpy(save_path, "tcp://172.16.8.1:6379?prefix=phpredis_");
                 strcat(save_path, reqc->gecos);
-		zend_alter_ini_entry("session.save_path", strlen("session.save_path")+1, save_path, strlen(save_path)+1, ZEND_INI_PERDIR, ZEND_INI_STAGE_ACTIVATE);
+#ifdef VH_PHP7
+		zend_alter_ini_entry("session.save_path", save_path, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+		zend_alter_ini_entry("session.save_handler", "redis", ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+#else
+		zend_alter_ini_entry("session.save_path", strlen("session.save_path")+1, save_path, strlen(save_path)+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+		zend_alter_ini_entry("session.save_handler", strlen("session.save_handler")+1, "redis", strlen("redis")+1, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+#endif
                 VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: session.save_path: %s", save_path);
                 free(save_path);
            
@@ -1267,7 +1306,11 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
                                 char* modname = malloc(strlen(retval)+4);
                                 sprintf(modname, "%s.so", retval); 
 				VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_modules: Zend PHP Module => %s", modname);
+#ifdef VH_PHP7
+  				zend_alter_ini_entry("extension", modname, ZEND_INI_SYSTEM,ZEND_INI_STAGE_ACTIVATE);
+#else
   				zend_alter_ini_entry("extension", strlen("extension")+1, modname, strlen(modname)+4, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+#endif
 				retval = apr_strtok(NULL, ",", &state);
 			}
 
@@ -1700,7 +1743,7 @@ static void register_hooks(apr_pool_t * p)
 	{"mod_php.c", "mod_suphp.c", NULL};
 	
 #ifdef HAVE_MPM_ITK_SUPPORT
-	static const char * const aszSuc_itk[]= {"itk.c",NULL };
+	static const char * const aszSuc_itk[]= {"mpm_itk.c",NULL };
 	ap_hook_post_read_request(vhs_itk_post_read, NULL, aszSuc_itk, APR_HOOK_REALLY_FIRST);
 	//ap_hook_header_parser(vhs_itk_post_read, NULL, aszSuc_itk, -15);
 #endif /* HAVE_MPM_ITK_SUPPORT */

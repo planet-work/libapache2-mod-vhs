@@ -48,6 +48,7 @@
 #define APR_WANT_STRFUNC
 #include "apr_want.h"
 
+#include "pwd.h"
 #include "apr.h"
 #include "apr_strings.h"
 #include "apr_lib.h"
@@ -122,7 +123,6 @@
 
 #ifdef HAVE_MOD_PHP_SUPPORT
 #  include <zend.h>
-#  include <zend_qsort.h>
 #  include <zend_API.h>
 #  include <zend_ini.h>
 #  include <zend_alloc.h>

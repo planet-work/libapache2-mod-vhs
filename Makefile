@@ -29,10 +29,18 @@ INDENT = /usr/bin/indent
 # is redefining strangely some headers.... :/
 
 #CFLAGS= -DDEBIAN -I/usr/include/apr-0
-CFLAGS+= -I/usr/local/include -I/usr/include/php5 -I/usr/include/php5/main/ -I/usr/include/php5/TSRM -I/usr/include/php5/Zend
-#CFLAGS+= -I/usr/local/include -I/usr/include/php -I/usr/include/php/main/ -I/usr/include/php/TSRM -I/usr/include/php/Zend
+PHPVER=$(shell php -v 2>&1 | head -1 | cut -c 1-5)
+ifeq ($(PHPVER),"PHP 5")
+  PHP_INC=/usr/include/php5/
+else
+  PHP_INC=/usr/include/php/20151012/
+  CFLAGS+= -DVH_PHP7
+endif
 
-#CFLAGS+= -DVH_DEBUG 
+CFLAGS+= -I/usr/local/include -I$(PHP_INC) -I$(PHP_INC)/main/ -I$(PHP_INC)/TSRM -I$(PHP_INC)/Zend
+
+
+CFLAGS+= -DVH_DEBUG 
 CFLAGS+= -DHAVE_MOD_PHP_SUPPORT 
 CFLAGS+= -DHAVE_MPM_ITK_SUPPORT
 CFLAGS+= -DHAVE_MOD_FLATFILE_SUPPORT

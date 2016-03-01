@@ -78,7 +78,7 @@ install: $(SRCS)
 	$(APXS) -c $(LDFLAGS) $(CFLAGS) $(SRCS)
 
 clean:
-	$(RM) $(OBJS) $(APACHE_MODULE) mod_vhs.slo mod_vhs.lo mod_vhs.la mod_vhs_alias.la mod_vhs_alias.lo mod_vhs_alias.slo vhosts_db_file.lo vhosts_db_file.slo
+	$(RM) $(OBJS) $(APACHE_MODULE) mod_vhs.slo mod_vhs.lo mod_vhs.la mod_vhs_alias.la mod_vhs_alias.lo mod_vhs_alias.slo vhosts_db_file.lo vhosts_db_file.slo test.o test
 	$(RM) -r .libs
 
 indent:

@@ -1,8 +1,11 @@
 /*
  * Version of mod_vhs
  */
-#define VH_VERSION	"mod_vhs/1.1.1"
+#define VH_VERSION	"mod_vhs/2.0.0"
 
+#define SENDMAIL_PATH   "/usr/lib/ezadmin/modules/web/bin/sendmail_secure"
+#define OPEN_BASEDIR    "/usr/share/php:/etc/php5/:/tmp:/var/lib/php/"
+#define REDIS_PATH      "tcp://10.3.100.1:6379?prefix=phpredis_"
 
 /*
  * Set this if you'd like to have looooots of debug
@@ -88,6 +91,9 @@
 #if defined(HAVE_MOD_FLATFILE_SUPPORT)
 #include "vhosts_db_file.h"
 #endif
+#if defined(HAVE_MOD_CONSUL_SUPPORT)
+#include "vhosts_db_consul.h"
+#endif
 
 /* XXX: Do we need that ? */
 //#include "ap_mpm.h" /* XXX */
@@ -121,12 +127,11 @@
  * #define HAVE_MOD_PHP_SUPPORT
  */
 
-#ifdef HAVE_MOD_PHP_SUPPORT
-#  include <zend.h>
-#  include <zend_API.h>
-#  include <zend_ini.h>
-#  include <zend_alloc.h>
-#  include <zend_operators.h>
+#include <zend.h>
+#include <zend_API.h>
+#include <zend_ini.h>
+#include <zend_alloc.h>
+#include <zend_operators.h>
 
 
 // PLANET-WORK
@@ -163,22 +168,10 @@ typedef struct extension_info {
 
 
 
-#endif
-
 /*
  * For mod_alias like operations
  */
 #define AP_MAX_REG_MATCH 10
-
-/*
- * To avoid compatibity and segfault
- */
-#ifdef HAVE_MOD_PHP_SUPPORT
-#  ifdef HAVE_MOD_SUPHP_SUPPORT
-#    error mod_vhs cannot support mod_php and suphp in the same time.
-#    error Please chose what support you want to have
-#  endif
-#endif
 
 /*
  * Configuration structure
@@ -194,54 +187,24 @@ typedef struct {
 	unsigned short int 	lamer_mode;		/* Lamer friendly mode */
 	unsigned short int 	log_notfound;		/* Log request for vhost/path is not found */
 
-#ifdef HAVE_MOD_PHP_SUPPORT
 	char           		*openbdir_path;		/* PHP open_basedir default path */
-#ifdef OLD_PHP
-	unsigned short int 	safe_mode;		/* PHP Safe mode */
-#endif /* OLD_PHP */
 	unsigned short int 	open_basedir;		/* PHP open_basedir */
 	unsigned short int 	append_basedir;		/* PHP append current directory to open_basedir */
 	unsigned short int 	display_errors;		/* PHP display_error */
 	unsigned short int 	phpopt_fromdb;		/* Get PHP options from database/ldap */
-#endif /* HAVE_MOD_PHP_SUPPORT */
-
-#ifdef HAVE_MPM_ITK_SUPPORT
-        unsigned short int	itk_enable;			/* MPM-ITK support */
+    unsigned short int	itk_enable;			/* MPM-ITK support */
 	uid_t			itk_defuid;
 	gid_t			itk_defgid;
 	char			*itk_defusername;
-#endif /* HAVE_MPM_ITK_SUPPORT */
 
-#ifdef HAVE_MOD_SUPHP_SUPPORT
-	char			  *suphp_config_path;	/* suPHP_ConfigPath */
-#endif /* HAVE_MOD_SUPHP_SUPPORT */
+	const char		         *tenant;
+	const char		         *db_host;
 
-#ifdef HAVE_LDAP_SUPPORT
-	char				*ldap_url;		/* String representation of LDAP URL */
-	char				*ldap_host;		/* Name of the ldap server or space separated list */
-	int				ldap_port;		/* Port of the LDAP server */
-	char				*ldap_basedn;		/* Base DN */
-	int				ldap_scope;		/* Scope of search */
-	int				ldap_set_filter;	/* Set custom filter */
-	char				*ldap_filter;		/* LDAP Filter */
-	deref_options			ldap_deref;		/* How to handle alias dereferening */
-	char				*ldap_binddn;		/* DN to bind to server (can be NULL) */
-	char				*ldap_bindpw;		/* Password to bind to server (can be NULL) */
-	int				ldap_have_deref;	/* Set if we have found an Deref option */
-	int 				ldap_have_url;		/* Set if we have found an LDAP url */
-	int				ldap_secure;		/* True if SSL connections are requested */
-#endif /* HAVE_LDAP_SUPPORT */
 
-#ifdef HAVE_MOD_DBD_SUPPORT
-	const char			*dbd_table_name;
-	const char			*query;
-	const char			*label;
-#endif
+	int            cache_counter;
+	unsigned       cache_lastclean;
+	apr_hash_t     *cache;   
 
-//PLANET-WORK
-#ifdef HAVE_MOD_FLATFILE_SUPPORT
-	const char		         *db_path;
-#endif
 	/*
 	 * From mod_alias.c
 	 */
@@ -253,9 +216,6 @@ typedef struct {
 } vhs_config_rec;
 
 typedef struct mod_vhs_request_t {
-#ifdef HAVE_LDAP_SUPPORT
-    char *dn;				/* The saved dn from a successful search */
-#endif
     char *name;				/* ServerName or host accessed uppon request */
     char *associateddomain;		/* The real server name */
     char *admin;			/* ServerAdmin or email for admin */
@@ -264,12 +224,14 @@ typedef struct mod_vhs_request_t {
     char *uid;				/* Suexec Uid */
     char *gid;				/* Suexec Gid */
     int vhost_found;			/* set to 1 if the struct is field with vhost information, 0 if not, -1 if the vhost does not exist  */
-#ifdef HAVE_MOD_FLATFILE_SUPPORT
     char *mysql_socket;                 /* Path for MySQL socket */
     char *php_mode;                     /* Mode for PHP */
     char *php_modules;			/* Modules for PHP */
     char *gecos;                     /* GECOS : username */
-#endif
+
+	/* cache management */
+	int  usage;
+	unsigned  added;
 } mod_vhs_request_t;
 
 /*

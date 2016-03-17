@@ -51,12 +51,13 @@ static size_t curl_write(char *ptr, size_t size, size_t nmemb, void *userdata) {
 }
 
 
-struct vhost_config *new_vhost_config (void) {
-	struct vhost_config *conf = malloc (sizeof (struct vhost_config));
+struct vhost_config *new_vhost_config (apr_pool_t * p) {
+	struct vhost_config *conf = apr_pcalloc (p,sizeof (struct vhost_config));
 	return conf;
 }
 
-void free_vhost_config(struct vhost_config *conf) {
+void free_vhost_config(struct vhost_config *conf,apr_pool_t * p) {
+	/*
     free(conf->uri);
     free(conf->vhost);
     free(conf->user);
@@ -65,10 +66,11 @@ void free_vhost_config(struct vhost_config *conf) {
     free(conf->php_mode);
     free(conf->php_config);
     free(conf->php_modules);
+	*/
 }
 
 
-int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *conf) {
+int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *conf,apr_pool_t * p) {
 	char *consul_url;
 	CURL *curl_handle = curl_easy_init();
 	char *curl_data;
@@ -82,8 +84,8 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
         host[strlen(host)-1] = '\0';
     }*/
 
-	curl_data = malloc(BUFFER_SIZE);
-    consul_url = malloc(200);
+	curl_data = apr_pcalloc(p,BUFFER_SIZE);
+    consul_url = apr_pcalloc(p,200);
 	sprintf(consul_url, "%s%s/host/%s",CONSUL_URL_BASE,tenant,host);
     struct curl_write_result wr = {
         .data = curl_data,
@@ -108,9 +110,9 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
     json_object *jobj;
 	json_object *jback;
     const char *valueb64;
-    valueb64 = malloc(10000);
-	json_data = malloc(1);
-    jobj = malloc(BUFFER_SIZE); // this is dumb
+    valueb64 = apr_pcalloc(p,10000);
+	json_data = apr_pcalloc(p,1);
+    jobj = apr_pcalloc(p,BUFFER_SIZE); // this is dumb
     int i;
 	for (i=0; i < json_object_array_length(jpwd) ; i++) {
 		jservice = json_object_array_get_idx(jpwd, i);
@@ -123,7 +125,7 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
 			return 1;
 		}
         int alloc_len = Base64decode_len(valueb64);
-        json_data = realloc(json_data,alloc_len);
+        json_data = apr_pcalloc(p,alloc_len);
         Base64decode(json_data, valueb64);
     } 
     printf(">> %s\n", json_data);
@@ -132,20 +134,20 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
 	jpwd = json_tokener_parse(json_data);
 
     json_object_object_get_ex(jpwd, "host",&jobj);
-	conf->uri = (char*) malloc(strlen(json_object_get_string(jobj))+1);
+	conf->uri = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
 	strcpy(conf->uri,json_object_get_string(jobj));
 
     json_object_object_get_ex(jpwd, "vhost",&jobj);
-	conf->vhost = (char*) malloc(strlen(json_object_get_string(jobj))+1);
+	conf->vhost = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
 	strcpy(conf->vhost,json_object_get_string(jobj));
 
     json_object_object_get_ex(jpwd, "user",&jobj);
-	conf->user = (char*) malloc(strlen(json_object_get_string(jobj))+1);
+	conf->user = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
 	strcpy(conf->user,json_object_get_string(jobj));
 
     json_object_object_get_ex(jpwd, "directory",&jobj);
 
-	conf->directory = (char*) malloc(strlen("/home/") + strlen(conf->user) + strlen(json_object_get_string(jobj))+2);
+	conf->directory = (char*) apr_pcalloc(p,strlen("/home/") + strlen(conf->user) + strlen(json_object_get_string(jobj))+2);
 	sprintf(conf->directory,"/home/%s/%s",conf->user,json_object_get_string(jobj));
     //strcpy(conf->directory,json_object_get_string(jobj));
 
@@ -153,11 +155,11 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
 	//jback = json_object_get_object(jobj);
 
 	json_object_object_get_ex(jback, "mysql_socket",&jobj);
-	conf->mysql_socket = (char*) malloc(strlen(json_object_get_string(jobj))+1);
+	conf->mysql_socket = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
     strcpy(conf->mysql_socket,json_object_get_string(jobj)); 
 
 	json_object_object_get_ex(jback, "php",&jobj);
-	conf->php_config = (char*) malloc(strlen(json_object_get_string(jobj))+1);
+	conf->php_config = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
     strcpy(conf->php_config,json_object_get_string(jobj)); 
 
 	conf->added = 0;

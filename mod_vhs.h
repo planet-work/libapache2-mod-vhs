@@ -6,6 +6,7 @@
 #define SENDMAIL_PATH   "/usr/lib/ezadmin/modules/web/bin/sendmail_secure"
 #define OPEN_BASEDIR    "/usr/share/php:/etc/php5/:/tmp:/var/lib/php/"
 #define REDIS_PATH      "tcp://10.3.100.1:6379?prefix=phpredis_"
+#define CONSUL_URL_BASE "http://localhost:8500/v1/kv/"
 
 /*
  * Set this if you'd like to have looooots of debug
@@ -22,22 +23,6 @@
  */
 /*
  * #define DEBIAN 1
- */
-
-/*
- * activate LDAP support
- */
-/*
- * #define HAVE_LDAP_SUPPORT
- */
-
-/*
- * Activate PHP < 5.3.x support
- *
- * WARNING: this code is not maintained anymore since vers 1.1.0-RC0
- */
-/*
- * #define OLD_PHP
  */
 
 /* Original Author: Michael Link <mlink@apache.org> */
@@ -57,6 +42,9 @@
 #include "apr_lib.h"
 #include "apr_uri.h"
 #include "apr_thread_mutex.h"
+#include "apr_global_mutex.h"
+#include "apr_shm.h"
+
 #if APR_MAJOR_VERSION > 0
 #include "apr_regexp.h"
 #endif
@@ -80,20 +68,7 @@
 
 #include "ap_config_auto.h"
 
-#if defined(HAVE_LDAP_SUPPORT) && !defined(APU_HAS_LDAP) && !defined(APR_HAS_LDAP)
-#error mod_vhs requires APR-utils to have LDAP support built in
-#endif
-#if defined(HAVE_LDAP_SUPPORT) && defined(HAVE_MOD_DBD_SUPPORT)
-#error mod_vhs requires only one backend. Choose between HAVE_LDAP_SUPPORT and HAVE_MOD_DBD_SUPPORT
-#endif
-
-
-#if defined(HAVE_MOD_FLATFILE_SUPPORT)
-#include "vhosts_db_file.h"
-#endif
-#if defined(HAVE_MOD_CONSUL_SUPPORT)
 #include "vhosts_db_consul.h"
-#endif
 
 /* XXX: Do we need that ? */
 //#include "ap_mpm.h" /* XXX */
@@ -104,6 +79,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -133,6 +109,7 @@
 #include <zend_alloc.h>
 #include <zend_operators.h>
 
+extern ZEND_API zend_executor_globals executor_globals;
 
 // PLANET-WORK
 #include <libgen.h>
@@ -173,14 +150,42 @@ typedef struct extension_info {
  */
 #define AP_MAX_REG_MATCH 10
 
+typedef struct mod_vhs_request_t {
+    char *name;				/* ServerName or host accessed uppon request */
+    char *associateddomain;		/* The real server name */
+    char *admin;			/* ServerAdmin or email for admin */
+    char *docroot;			/* DocumentRoot */
+    char *phpoptions;			/* PHP Options */
+    char *uid;				/* Suexec Uid */
+    char *gid;				/* Suexec Gid */
+    int vhost_found;			/* set to 1 if the struct is field with vhost information, 0 if not, -1 if the vhost does not exist  */
+    char *mysql_socket;                 /* Path for MySQL socket */
+    char *php_mode;                     /* Mode for PHP */
+    char *php_modules;			/* Modules for PHP */
+    char *gecos;                     /* GECOS : username */
+
+	/* cache management */
+	int  usage;
+	unsigned  added;
+	char *json;
+} mod_vhs_request_t;
+
+/* The structure that is stored in shared memory */
+typedef struct {
+	unsigned int lastcleaned;
+	unsigned int counter;
+	char keys [100][100];
+	char entries [100][2048];
+	unsigned int added[100];
+} vhs_cache_t;
+
+
 /*
  * Configuration structure
  */
 typedef struct {
 	unsigned short int	enable;			/* Enable the module */
 	unsigned short int	db_mode;		/* Mode when module have dbd and ldap support */
-							/* 1 = LDAP */
-							/* 2 = DBD */
 	char           		*path_prefix;		/* Prefix to add to path returned by database/ldap */
 	char           		*default_host;		/* Default host to redirect to */
 
@@ -201,9 +206,18 @@ typedef struct {
 	const char		         *db_host;
 
 
-	int            cache_counter;
-	unsigned       cache_lastclean;
-	apr_hash_t     *cache;   
+    unsigned       cache_ttl; 
+    unsigned       cache_maxusage; 
+    unsigned       cache_cleaninter; 
+	apr_global_mutex_t *cache_mutex;
+	apr_shm_t      *cache_shm; 
+	vhs_cache_t    *cache;   
+	char           *cache_mutex_lockfile;
+	char           *cache_shm_file;
+
+	const char      *php_sessions;
+	const char      *php_sendmail;
+
 
 	/*
 	 * From mod_alias.c
@@ -215,24 +229,8 @@ typedef struct {
 	 */
 } vhs_config_rec;
 
-typedef struct mod_vhs_request_t {
-    char *name;				/* ServerName or host accessed uppon request */
-    char *associateddomain;		/* The real server name */
-    char *admin;			/* ServerAdmin or email for admin */
-    char *docroot;			/* DocumentRoot */
-    char *phpoptions;			/* PHP Options */
-    char *uid;				/* Suexec Uid */
-    char *gid;				/* Suexec Gid */
-    int vhost_found;			/* set to 1 if the struct is field with vhost information, 0 if not, -1 if the vhost does not exist  */
-    char *mysql_socket;                 /* Path for MySQL socket */
-    char *php_mode;                     /* Mode for PHP */
-    char *php_modules;			/* Modules for PHP */
-    char *gecos;                     /* GECOS : username */
 
-	/* cache management */
-	int  usage;
-	unsigned  added;
-} mod_vhs_request_t;
+
 
 /*
  * From mod_alias.c

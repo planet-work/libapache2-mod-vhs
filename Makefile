@@ -43,7 +43,7 @@ endif
 CFLAGS+= -I/usr/local/include -I$(PHP_INC) -I$(PHP_INC)/main/ -I$(PHP_INC)/TSRM -I$(PHP_INC)/Zend
 
 
-CFLAGS+= -DVH_DEBUG 
+#CFLAGS+= -DVH_DEBUG 
 CFLAGS+= -DHAVE_MOD_PHP_SUPPORT 
 CFLAGS+= -DHAVE_MPM_ITK_SUPPORT
 CFLAGS+= -DHAVE_MOD_CONSUL_SUPPORT
@@ -85,8 +85,8 @@ test_file: test_file.c vhosts_db_file.c
 
 install: $(SRCS)
 	echo $(PHPVER)
-#	$(APXS) -i -a -c $(LDFLAGS) $(CFLAGS) $(SRCS)
-	$(APXS) -i -a -c  $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
+#	$(APXS) -i -a -c $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
+	$(APXS) -i -c  $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
 
 clean:
 	$(RM) $(OBJS) $(APACHE_MODULE) mod_vhs.slo mod_vhs.lo mod_vhs.la mod_vhs_alias.la mod_vhs_alias.lo mod_vhs_alias.slo vhosts_db_*.lo vhosts_db_*.slo test_file.o test_consul.o base64.o test_file test_consul

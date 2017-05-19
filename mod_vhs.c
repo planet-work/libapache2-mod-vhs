@@ -106,7 +106,7 @@ static void *vhs_create_server_config(apr_pool_t * p, server_rec * s)
 	vhr->phpopt_fromdb = 1;
 
 	vhr->tenant = NULL;
-	vhr->db_host = CONSUL_URL_BASE;
+	vhr->db_host = REDIS_SOCKET;
 	vhr->cache_ttl = 10;
 	vhr->cache_maxusage = 100;
 	vhr->cache_cleaninter = 10;

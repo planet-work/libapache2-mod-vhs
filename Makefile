@@ -46,7 +46,7 @@ CFLAGS+= -I/usr/local/include -I$(PHP_INC) -I$(PHP_INC)/main/ -I$(PHP_INC)/TSRM 
 #CFLAGS+= -DVH_DEBUG 
 CFLAGS+= -DHAVE_MOD_PHP_SUPPORT 
 CFLAGS+= -DHAVE_MPM_ITK_SUPPORT
-CFLAGS+= -DHAVE_MOD_CONSUL_SUPPORT
+CFLAGS+= -DHAVE_MOD_REDIS_SUPPORT
 #CFLAGS+= -DHAVE_MOD_FLATFILE_SUPPORT
 #CFLAGS+= -DHAVE_MOD_DBD_SUPPORT
 #CFLAGS+= -DHAVE_LDAP_SUPPORT
@@ -56,7 +56,7 @@ CFLAGS+= -DHAVE_MOD_CONSUL_SUPPORT
 
 
 # Flags for compilation (Full Debug)
-#CFLAGS+= -DVH_DEBUG -Wc,all
+CFLAGS+= -DVH_DEBUG  -g
 
 # Flags for compilation with PHP
 #CFLAGS+= -I/usr/local/include/php -I/usr/local/include/php/main -I/usr/local/include/php/TSRM -I/usr/local/include/php/Zend -DHAVE_MOD_PHP_SUPPORT -Wc,-Wall
@@ -72,8 +72,8 @@ default: all
 all: install
 
 test_redis: test_redis.c vhosts_db_redis.c
-	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ test_redis.c
-	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ vhosts_db_redis.c
+	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ -I/usr/include/apache2 test_redis.c
+	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ -I/usr/include/apache2 vhosts_db_redis.c
 	gcc -o test_redis $(GCCGLAGS) -ggdb -lapr-1 -lhiredis -ljson-c test_redis.o vhosts_db_redis.o
 
 test_file: test_file.c vhosts_db_file.c

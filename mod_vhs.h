@@ -6,7 +6,7 @@
 #define SENDMAIL_PATH   "/usr/lib/ezadmin/modules/web/bin/sendmail_secure"
 #define OPEN_BASEDIR    "/usr/share/php:/etc/php5/:/tmp:/var/lib/php/"
 #define REDIS_PATH      "tcp://10.3.100.1:6379?prefix=phpredis_"
-#define CONSUL_URL_BASE "http://localhost:8500/v1/kv/"
+#define REDIS_SOCKET    "/var/run/redis/redis-webconf.sock"
 
 /*
  * Set this if you'd like to have looooots of debug

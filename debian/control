@@ -1,7 +1,7 @@
 Source: libapache2-mod-vhs
 Priority: extra
-Maintainer: Dejan SANADER <d.sanader@planet-work.com>
-Build-Depends: debhelper (>= 8.0.0), apache2-prefork-dev
+Maintainer: Frédéric VANNIÈRE <f.vanniere@planet-work.com>
+Build-Depends: debhelper (>= 8.0.0), apache2-prefork-dev, libhiredis-dev
 Standards-Version: 3.9.3
 Section: libs
 Homepage: http://www.planet-work.com/
@@ -11,5 +11,5 @@ Homepage: http://www.planet-work.com/
 Package: libapache2-mod-vhs
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, apache2-mpm-prefork | apache2-mpm-itk | libapache2-mpm-itk
+Depends: ${shlibs:Depends}, ${misc:Depends}, apache2-mpm-prefork | apache2-mpm-itk | libapache2-mpm-itk, libhiredis
 Description: Mass virtualhosting, customized mod_vhs by PW

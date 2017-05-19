@@ -15,8 +15,8 @@
 APXS = apxs2
 
 NAME = mod_vhs
-SRCS = mod_vhs.c mod_vhs_alias.c vhosts_db_consul.c base64.c
-OBJS = mod_vhs.o mod_vhs_alias.o vhosts_db_consul.o base64.o
+SRCS = mod_vhs.c mod_vhs_alias.c vhosts_db_redis.c 
+OBJS = mod_vhs.o mod_vhs_alias.o vhosts_db_redis.o
 APACHE_MODULE = $(NAME).so
 
 RM = rm -f
@@ -61,7 +61,7 @@ CFLAGS+= -DHAVE_MOD_CONSUL_SUPPORT
 # Flags for compilation with PHP
 #CFLAGS+= -I/usr/local/include/php -I/usr/local/include/php/main -I/usr/local/include/php/TSRM -I/usr/local/include/php/Zend -DHAVE_MOD_PHP_SUPPORT -Wc,-Wall
 
-LDFLAGS = -lcurl -ljson-c
+LDFLAGS = -lhiredis -ljson-c
 
 ################################################################
 ### End of user configuration directives
@@ -71,11 +71,10 @@ default: all
 
 all: install
 
-test_consul: test_consul.c vhosts_db_consul.c base64.c
-	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ test_consul.c
-	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ vhosts_db_consul.c
-	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ base64.c
-	gcc -o test_consul $(GCCGLAGS) -ggdb -lapr-1 -lcurl -ljson-c test_consul.o vhosts_db_consul.o base64.o
+test_redis: test_redis.c vhosts_db_redis.c
+	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ test_redis.c
+	gcc -c $(CFLAGS) $(GCCGLAGS) -ggdb -I/usr/include/apr-1.0/ vhosts_db_redis.c
+	gcc -o test_redis $(GCCGLAGS) -ggdb -lapr-1 -lhiredis -ljson-c test_redis.o vhosts_db_redis.o
 
 test_file: test_file.c vhosts_db_file.c
 	gcc -c $(CFLAGS) -ggdb test_file.c
@@ -89,7 +88,7 @@ install: $(SRCS)
 	$(APXS) -i -c  $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
 
 clean:
-	$(RM) $(OBJS) $(APACHE_MODULE) mod_vhs.slo mod_vhs.lo mod_vhs.la mod_vhs_alias.la mod_vhs_alias.lo mod_vhs_alias.slo vhosts_db_*.lo vhosts_db_*.slo test_file.o test_consul.o base64.o test_file test_consul
+	$(RM) $(OBJS) $(APACHE_MODULE) mod_vhs.slo mod_vhs.lo mod_vhs.la mod_vhs_alias.la mod_vhs_alias.lo mod_vhs_alias.slo vhosts_db_*.lo vhosts_db_*.slo test_file.o test_redis.o test_file test_redis
 	$(RM) -r .libs
 
 indent:

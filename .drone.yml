@@ -1,0 +1,42 @@
+pipeline:
+  clone:
+    image: plugins/git
+    tags: true
+
+  build:
+    image: dock.pw.fr/pw/debpkg:jessie
+    commands:
+      - echo "deb http://ftp.fr.debian.org/debian/ jessie-backports main" > /etc/apt/sources.list.d/backports.list
+      - apt-get update >/dev/null
+      - apt-get install -y -t jessie-backports cmake libhiredis-dev libhiredis-dbg valgrind redis-server  
+      - sed -i -e "s/6379/6380/" /etc/redis/redis.conf
+      - echo "unixsocket /var/run/redis/redis-webconf.sock" >> /etc/redis/redis.conf
+      - /etc/init.d/redis-server start
+      - redis-cli -p 6380 SET WEBHOST/website.com "website.com:www.website.com:testuser:/home/testuser/public_html/www/:/var/run/mysqld/mysql.sock:default:display_errors=1;magic_quotes_gpc=1;"
+      - make
+      - make test_redis
+      - valgrind ./test_redis
+      - dpkg-buildpackage -b
+
+  pkg:
+    image: appleboy/drone-scp
+    host: pippin.planet-work.net
+    username: pkg
+    source: ../*.deb
+    target: incoming/libapache2-mod-vhs/jessie
+    when:
+        event: tag
+
+  aptly:
+    image: appleboy/drone-ssh
+    host: pippin.planet-work.net
+    user: pkg
+    script:
+      - aptly repo add debian-jessie incoming/libapache2-mod-vhs/jessie && aptly publish update jessie debian 
+    when:
+      event: tag
+
+matrix:
+  DEBIAN_VERSION:
+    - jessie
+

@@ -20,7 +20,7 @@
 
 #include "base64.h"
 
-#include "vhosts_db_consul.h"
+#include "vhosts_db_redis.h"
 
 #define BUFSIZE (8192)
 #define DEF_SOCK_TIMEOUT	(APR_USEC_PER_SEC * 30)
@@ -28,8 +28,8 @@
 #define CONSUL_URL_BASEX "http://localhost:8500/v1/kv/"
 
 
-char *consul_lookup_last = NULL;
-char *consul_lookup_res = NULL;
+char *redis_lookup_last = NULL;
+char *redis_lookup_res = NULL;
 
 struct curl_write_result {
     char *data;
@@ -222,7 +222,7 @@ int vhost_parseconfig(const char *json_data,struct vhost_config *conf,apr_pool_t
 
 
 int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *conf,apr_pool_t * p) {
-	char *consul_url;
+	char *redis_url;
 	CURL *curl_handle = curl_easy_init();
 	char *curl_data;
     char *json_data;
@@ -236,8 +236,8 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
     }*/
 
 	curl_data = apr_pcalloc(p,BUFFER_SIZE);
-    consul_url = apr_pcalloc(p,200);
-	sprintf(consul_url, "%s%s/host/%s",CONSUL_URL_BASEX,tenant,host);
+    redis_url = apr_pcalloc(p,200);
+	sprintf(redis_url, "%s%s/host/%s",CONSUL_URL_BASEX,tenant,host);
     struct curl_write_result wr = {
         .data = curl_data,
         .pos = 0
@@ -246,7 +246,7 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
     ////curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_write);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &wr);
-    curl_easy_setopt(curl_handle, CURLOPT_URL, consul_url);
+    curl_easy_setopt(curl_handle, CURLOPT_URL, redis_url);
     if (tenant == NULL || curl_easy_perform(curl_handle)) {
          return 1;
     }

@@ -68,7 +68,7 @@
 #define MUTEX_LOCKFILE "/run/apache2/vhs_mutex.lock"
 #define MUTEX_FILE "vhs_shm"
 
-int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname, mod_vhs_request_t * reqc);
+int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname, mod_vhs_request_t * reqc);
 /*
  * Let's start coding
  */
@@ -423,7 +423,7 @@ static int vhs_redirect_stuff(request_rec * r, vhs_config_rec * vhr)
 /*
  *  Get the stuff from Mod Flat File
  */
-int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname, mod_vhs_request_t * reqc)
+int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname, mod_vhs_request_t * reqc)
 {
 	int rv;
 	const char *host = 0;
@@ -435,11 +435,11 @@ int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostnam
 	unsigned now = (unsigned)time(NULL);
 	int cache_found = 0;
 
-    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup :  CACHE counter = %u",vhr->cache->counter);
+    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup :  CACHE counter = %u",vhr->cache->counter);
 
 	vhr->tenant = getenv("TENANT");
 	/*if (vhr->tenant == NULL || vhr->db_host == NULL) {
-		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_consul_lookup: No Tenant or DB Host specified");
+		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_redis_lookup: No Tenant or DB Host specified");
 		return DECLINED;
 	}*/
 
@@ -453,39 +453,39 @@ int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostnam
          return OK;
 	}
 
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup -------------------%s--------------------",r->hostname);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup -------------------%s--------------------",r->hostname);
 
 	if (r->hostname == NULL)
 		host = vhr->default_host;
 	else
 		host = r->hostname;
 	/* host = ap_get_server_name(r); */
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: search for vhost: '%s'", host);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: search for vhost: '%s'", host);
 	p = new_vhost_config(r->pool);
 
 	for (i = 0; i < sizeof(vhr->cache->added); i++) {
        if (now - vhr->cache->added[i] < vhr->cache_ttl && memcmp(host,&vhr->cache->keys[i],strlen(host)) == 0) {
 	       cache_conf = apr_pcalloc(r->pool, sizeof(vhr->cache->keys[i]));
 		   memcpy(cache_conf,&vhr->cache->entries[i],sizeof(vhr->cache->keys[i]));
-           VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: found cache for '%s' ==> %s", host,cache_conf);
+           VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: found cache for '%s' ==> %s", host,cache_conf);
 		   break;
 	   }
 	}
 
 	if (cache_conf != NULL && strlen(cache_conf) > 10) {
 	    res = vhost_parseconfline(cache_conf, p, r->pool);
-        VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup:  conf from cache line %s",p->directory);
+        VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup:  conf from cache line %s",p->directory);
 		cache_found = 1;
     } else {
-		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: fetch config for %s/%s  uid/euid=%i/%i",vhr->tenant, host,getuid(),geteuid());
+		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: fetch config for %s/%s  uid/euid=%i/%i",vhr->tenant, host,getuid(),geteuid());
 	    res = vhost_getconfig(vhr->tenant, host, p, r->pool);
 	}
 
 	if (res > 0) {
-		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: no config found for '%s'", host);
-		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: search for vhost: '%s'", vhr->default_host);
+		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: no config found for '%s'", host);
+		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: search for vhost: '%s'", vhr->default_host);
 		res = vhost_getconfig(vhr->tenant, vhr->default_host,p, r->pool);
-		//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: got nothing for '%s'(%i)", host,p);
+		//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: got nothing for '%s'(%i)", host,p);
         if (res > 0) {
 			p->vhost = "localhost";
 			p->user = "www-data";
@@ -497,11 +497,11 @@ int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostnam
 	}
 	/* servername */
 	reqc->name = apr_pstrdup(r->pool, p->vhost);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: server_name: %s", reqc->name);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: server_name: %s", reqc->name);
 
 	/* document root */
 	reqc->docroot = apr_pstrdup(r->pool, p->directory);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: docroot: %s", reqc->docroot);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: docroot: %s", reqc->docroot);
 
 	/* suexec UID */
 	struct passwd pwd;
@@ -519,39 +519,39 @@ int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostnam
 	}
 	sprintf(buf, "%d", pwd.pw_uid);
 	reqc->uid = apr_pstrdup(r->pool, buf);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: uid: %s", reqc->uid);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: uid: %s", reqc->uid);
 
 	sprintf(buf, "%d", pwd.pw_gid);
 	reqc->gid = apr_pstrdup(r->pool, buf);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: gid: %s", reqc->gid);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: gid: %s", reqc->gid);
 
 	/* GECOS : username */
 	reqc->gecos = apr_pstrdup(r->pool, p->user);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: gecos: %s", reqc->gecos);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: gecos: %s", reqc->gecos);
 
 	/* suexec GID */
 	//reqc->gid = apr_pstrdup(r->pool, "1002");
-	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: gid: %s", reqc->gid);
+	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: gid: %s", reqc->gid);
 
 	/* associate domain */
 	reqc->associateddomain = apr_pstrdup(r->pool, p->vhost);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: associateddomain: %s", reqc->associateddomain);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: associateddomain: %s", reqc->associateddomain);
 
 	/* MySQL socket */
 	reqc->mysql_socket = apr_pstrdup(r->pool, p->mysql_socket);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: mysql_socket: %s", reqc->mysql_socket);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: mysql_socket: %s", reqc->mysql_socket);
 
 	/* PHP mode */
 	//reqc->php_mode = apr_pstrdup(r->pool, p->php_mode);
-	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: php_mode: %s", reqc->php_mode);
+	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: php_mode: %s", reqc->php_mode);
 
 	/* phpopt_fromdb / options PHP */
 	reqc->phpoptions = apr_pstrdup(r->pool, p->php_config);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: php_config: %s", reqc->phpoptions);
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: php_config: %s", reqc->phpoptions);
 
 	/* PHP modules */
 	//reqc->php_modules = apr_pstrdup(r->pool, p->php_modules);
-	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: php_modules: %s", reqc->php_modules);
+	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: php_modules: %s", reqc->php_modules);
 
 	/* the vhost has been found, set vhost_found to VH_VHOST_INFOS_FOUND */
 	reqc->vhost_found = VH_VHOST_INFOS_FOUND;
@@ -560,10 +560,10 @@ int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostnam
 	if (strlen(p->cache) < sizeof(vhr->cache->entries[0]) && cache_found == 0) {
 		rv = apr_global_mutex_lock(vhr->cache_mutex);
 		 if (rv != APR_SUCCESS) {
-			ap_log_rerror(APLOG_MARK, APLOG_CRIT, rv, r, "vhs_consul_lookup: apr_global_mutex_lock failed for cache uid/euid=%i/%i",getuid(),geteuid());
+			ap_log_rerror(APLOG_MARK, APLOG_CRIT, rv, r, "vhs_redis_lookup: apr_global_mutex_lock failed for cache uid/euid=%i/%i",getuid(),geteuid());
 			//return HTTP_INTERNAL_SERVER_ERROR;
 		} else {
-			ap_log_rerror(APLOG_MARK, APLOG_CRIT, rv, r, "vhs_consul_lookup: apr_global_mutex_lock SUCCESS for cache uid/euid=%i/%i",getuid(),geteuid());
+			ap_log_rerror(APLOG_MARK, APLOG_CRIT, rv, r, "vhs_redis_lookup: apr_global_mutex_lock SUCCESS for cache uid/euid=%i/%i",getuid(),geteuid());
 
 			// Add json to cache
 			for (i = 0; i<sizeof(vhr->cache->added); i++) {
@@ -573,7 +573,7 @@ int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostnam
 					vhr->cache->keys[i][strlen(host)] = '\0';
                     memset(&vhr->cache->entries[i],'\0',sizeof(vhr->cache->entries[i]));
 					memcpy(&vhr->cache->entries[i],p->cache,strlen(p->cache)+1);
-			        //VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: cache entry set for %s [%s] %s size=%i",r->hostname,host,&vhr->cache->entries[i],sizeof(vhr->cache->entries[i]));
+			        //VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: cache entry set for %s [%s] %s size=%i",r->hostname,host,&vhr->cache->entries[i],sizeof(vhr->cache->entries[i]));
 					break;
 				}
 			}
@@ -582,7 +582,7 @@ int vhs_consul_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostnam
 
     apr_global_mutex_unlock(vhr->cache_mutex);
 	}
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_consul_lookup: DONE");
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: DONE");
 
 	return OK;
 }
@@ -617,7 +617,7 @@ static int vhs_itk_post_read(request_rec * r)
 	ap_set_module_config(r->request_config, &vhs_module, reqc);
 
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: Getting host config for %s", r->hostname);
-	vhost_found_by_request = vhs_consul_lookup(r, vhr, r->hostname, reqc);
+	vhost_found_by_request = vhs_redis_lookup(r, vhr, r->hostname, reqc);
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: vhost_found_by_request");
 	if (vhost_found_by_request == OK) {
 
@@ -932,7 +932,7 @@ static int vhs_translate_name(request_rec * r)
 		/*
 		 * Trying to get vhost information
 		 */
-		vhost_found_by_request = vhs_consul_lookup(r, vhr, (char *)host, reqc);
+		vhost_found_by_request = vhs_redis_lookup(r, vhr, (char *)host, reqc);
 		if (vhost_found_by_request != OK) {
 			if (vhr->log_notfound) {
 				ap_log_error(APLOG_MARK, APLOG_NOTICE,
@@ -1059,7 +1059,7 @@ static const command_rec vhs_commands[] = {
 
 	AP_INIT_TAKE1("vhs_PhpSessionAddr", set_field, (void *)8, RSRC_CONF, "PHP Session address (Redis)"),
 	AP_INIT_TAKE1("vhs_PhpSendmailPath", set_field, (void *)9, RSRC_CONF, "PHP sendmail_path"),
-	AP_INIT_TAKE1("vhs_ConsulHost", set_field, (void *)10, RSRC_CONF, "Host for consul vhosts DB "),
+	AP_INIT_TAKE1("vhs_ConsulHost", set_field, (void *)10, RSRC_CONF, "Host for redis vhosts DB "),
 
 	AP_INIT_TAKE1("vhs_CacheTTL", set_field, (void *)11, RSRC_CONF, "Cache TTL"),
 	AP_INIT_TAKE1("vhs_CacheMaxUsage", set_field, (void *)12, RSRC_CONF, "Cache max usage"),

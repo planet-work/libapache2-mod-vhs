@@ -2,7 +2,7 @@ libapache2-mod-vhs (2.0-1) UNRELEASED; urgency=medium
 
   * PHP7 support 
   * big cleanups
-  * Consul DB support, removed all other databases code
+  * Redis DB support, removed all other databases code
   * local cache 
   * new Apache configuration variabled
 

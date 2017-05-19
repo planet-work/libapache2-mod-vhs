@@ -68,7 +68,7 @@
 
 #include "ap_config_auto.h"
 
-#include "vhosts_db_consul.h"
+#include "vhosts_db_redis.h"
 
 /* XXX: Do we need that ? */
 //#include "ap_mpm.h" /* XXX */

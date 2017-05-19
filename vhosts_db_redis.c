@@ -47,6 +47,78 @@ void free_vhost_config(struct vhost_config *conf,apr_pool_t * p) {
 	*/
 }
 
+
+int vhost_parseconfline(const char *line,struct vhost_config *conf,apr_pool_t * p) {
+    char * tok;
+    int i = 0;
+    char * p2;
+
+
+    //fprintf(stderr,"***** parsing line************* \n");
+    //fflush(stderr);
+    //fprintf(stderr,"***** LINE %s \n", line);
+    //fflush(stderr);
+
+
+    tok = apr_pcalloc(p,sizeof(char) * strlen(line)+1);
+
+    strcpy(tok, line);
+
+    conf->added = time(NULL);
+    conf->cache = apr_pstrdup(p,line);
+
+
+
+    while(1) {
+        p2 = strchr(tok, '|');
+        if(p2 != NULL)
+            *p2 = '\0';
+
+        switch (i) {
+
+            case 0: // URI 
+                conf->uri = (char *) apr_pcalloc(p,strlen(tok)+1);
+                strncpy(conf->uri,tok,strlen(tok));
+                break;
+
+            case 1: // VHOST 
+                conf->vhost = (char *) apr_pcalloc(p,strlen(tok)+1);
+                strncpy(conf->vhost,tok,strlen(tok));
+                break;
+
+            case 2: // USER 
+                conf->user = (char *) apr_pcalloc(p,strlen(tok)+1);
+                strncpy(conf->user,tok,strlen(tok));
+                break;
+
+            case 3: // DIRECTORY 
+                conf->directory = (char *) apr_pcalloc(p,strlen(tok)+1);
+                strncpy(conf->directory,tok,strlen(tok));
+                break;
+
+            case 4: // MYSQL_SOCKET 
+                conf->mysql_socket = (char *) apr_pcalloc(p,strlen(tok)+1);
+                strncpy(conf->mysql_socket,tok,strlen(tok));
+                break;
+
+            case 5: // PHP_CONFIG 
+                //conf->php_config = (char *) apr_pcalloc(p,strlen(tok)+1);
+                conf->php_config = (char *) apr_pcalloc(p,2048);
+                strncpy(conf->php_config, tok, strlen(tok));
+                break;
+        }
+
+        tok = p2 + 1;
+        if(p2 == NULL)
+            break;
+        i++;
+    }
+    //fprintf(stderr," ======================================================= \n");
+    //fflush(stderr);
+    return 0;
+}
+
+
 int vhost_parseconfig(const char *json_data,struct vhost_config *conf,apr_pool_t * p) {
 	json_object *jpwd;
 	json_object *jobj;

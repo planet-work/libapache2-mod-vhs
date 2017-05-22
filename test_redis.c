@@ -10,7 +10,7 @@ int main(void) {
     struct vhost_config *conf = new_vhost_config(p);
 	int res;
 
-    res = vhost_getconfig("kaa","www.kaa.on-web.fr",conf,p);
+    res = vhost_getconfig(NULL,"www.kaa.on-web.fr",conf,p);
 	if (res != 0) {
 		printf("ERROR, no conf found\n");
 		return 1;

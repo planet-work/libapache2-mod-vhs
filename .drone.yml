@@ -13,6 +13,8 @@ pipeline:
       - echo "unixsocket /var/run/redis/redis-webconf.sock" >> /etc/redis/redis.conf
       - /etc/init.d/redis-server start
       - redis-cli -p 6380 SET WEBHOST/website.com "website.com:www.website.com:testuser:/home/testuser/public_html/www/:/var/run/mysqld/mysql.sock:default:display_errors=1;magic_quotes_gpc=1;"
+      - scan-build make
+      - scan-build make test_redis
       - make
       - make test_redis
       - valgrind ./test_redis

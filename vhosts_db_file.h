@@ -8,7 +8,7 @@ struct vhost_config {
   char *directory;
   char *mysql_socket;
   char *php_mode;
-  char *php_config;
+  apr_hash_t *php_config;
   char *php_modules;
   time_t added;
 };

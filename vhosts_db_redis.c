@@ -21,7 +21,7 @@
 #include "vhosts_db_redis.h"
 
 #define BUFSIZE (8192)
-#define DEF_SOCK_TIMEOUT	(APR_USEC_PER_SEC * 30)
+#define DEF_SOCK_TIMEOUT    (APR_USEC_PER_SEC * 30)
 #define BUFFER_SIZE (256*1024) // 256kB
 #define REDIS_SOCKET    "/var/run/redis/redis-webconf.sock"
 
@@ -30,12 +30,13 @@ char *redis_lookup_res = NULL;
 redisContext *redis_context = NULL;
 
 struct vhost_config *new_vhost_config (apr_pool_t * p) {
-	struct vhost_config *conf = apr_pcalloc (p,sizeof (struct vhost_config));
-	return conf;
+    struct vhost_config *conf = apr_pcalloc (p,sizeof (struct vhost_config));
+    return conf;
 }
 
 void free_vhost_config(struct vhost_config *conf,apr_pool_t * p) {
-	/*
+
+    /*
     free(conf->uri);
     free(conf->vhost);
     free(conf->user);
@@ -44,7 +45,7 @@ void free_vhost_config(struct vhost_config *conf,apr_pool_t * p) {
     free(conf->php_mode);
     free(conf->php_config);
     free(conf->php_modules);
-	*/
+    */
 }
 
 
@@ -102,9 +103,9 @@ int vhost_parseconfline(const char *line,struct vhost_config *conf,apr_pool_t * 
                 break;
 
             case 5: // PHP_CONFIG 
-                //conf->php_config = (char *) apr_pcalloc(p,strlen(tok)+1);
-                conf->php_config = (char *) apr_pcalloc(p,2048);
-                strncpy(conf->php_config, tok, strlen(tok));
+				conf->php_config = apr_hash_make(p);
+                //conf->php_config = (char *) apr_pcalloc(p,2048);
+                //strncpy(conf->php_config, tok, strlen(tok));
                 break;
         }
 
@@ -120,81 +121,101 @@ int vhost_parseconfline(const char *line,struct vhost_config *conf,apr_pool_t * 
 
 
 int vhost_parseconfig(const char *json_data,struct vhost_config *conf,apr_pool_t * p) {
-	json_object *jpwd;
-	json_object *jobj;
-	json_object *jback;
+    json_object *jpwd;
+    json_object *jobj;
+    int no_public_html;
 
-	jobj = apr_pcalloc(p,BUFFER_SIZE);
-
-	jpwd = json_tokener_parse(json_data);
+    jobj = apr_pcalloc(p,BUFFER_SIZE);
+    jpwd = json_tokener_parse(json_data);
 
     json_object_object_get_ex(jpwd, "host",&jobj);
-	conf->uri = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
-	strcpy(conf->uri,json_object_get_string(jobj));
+    conf->uri = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
+    strcpy(conf->uri,json_object_get_string(jobj));
 
     json_object_object_get_ex(jpwd, "vhost",&jobj);
-	conf->vhost = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
-	strcpy(conf->vhost,json_object_get_string(jobj));
+    conf->vhost = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
+    strcpy(conf->vhost,json_object_get_string(jobj));
 
     json_object_object_get_ex(jpwd, "user",&jobj);
-	conf->user = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
-	strcpy(conf->user,json_object_get_string(jobj));
+    conf->user = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
+    strcpy(conf->user,json_object_get_string(jobj));
+
+    no_public_html = 0;
+    json_object_object_get_ex(jpwd, "no_public_html",&jobj);
+    no_public_html = json_object_get_int(jobj);
 
     json_object_object_get_ex(jpwd, "directory",&jobj);
-	conf->directory = (char*) apr_pcalloc(p,strlen("/home/") + strlen(conf->user) + strlen(json_object_get_string(jobj))+2);
-	sprintf(conf->directory,"/home/%s/public_html/%s",conf->user,json_object_get_string(jobj));
-    //strcpy(conf->directory,json_object_get_string(jobj));
+    if (strcmp(conf->user,"www-data") == 0) {
+        conf->directory = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
+        sprintf(conf->directory,"%s",json_object_get_string(jobj));
+    } else if (no_public_html == 1) {
+        conf->directory = (char*) apr_pcalloc(p,strlen("/home/") + strlen(conf->user) + strlen(json_object_get_string(jobj))+2);
+        sprintf(conf->directory,"/home/%s/%s",conf->user,json_object_get_string(jobj));
+    } else {
+        conf->directory = (char*) apr_pcalloc(p,strlen("/home/") + strlen(conf->user) + strlen("/public_html/") + strlen(json_object_get_string(jobj))+2);
+        sprintf(conf->directory,"/home/%s/public_html/%s",conf->user,json_object_get_string(jobj));
+    }
 
-	json_object_object_get_ex(jpwd, "backend",&jback);
-	//jback = json_object_get_object(jobj);
+    json_object *jback;
+    json_object_object_get_ex(jpwd, "backend",&jback);
+    //jback = json_object_get_object(jobj);
 
-	json_object_object_get_ex(jback, "mysql_socket",&jobj);
-	conf->mysql_socket = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
+    json_object_object_get_ex(jback, "mysql_socket",&jobj);
+    conf->mysql_socket = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
     strcpy(conf->mysql_socket,json_object_get_string(jobj)); 
 
-	json_object_object_get_ex(jback, "php_config",&jobj);
-	conf->php_config = (char*) apr_pcalloc(p,strlen(json_object_get_string(jobj))+1);
-    strcpy(conf->php_config,json_object_get_string(jobj)); 
-
-	conf->cache = (char*) apr_psprintf(p,"%s|%s|%s|%s|%s|%s",
+    json_object_object_get_ex(jback, "php_config",&jobj);
+	char * php_config_str = apr_pcalloc(p,2000);
+    conf->php_config = apr_hash_make(p);
+	json_object_object_foreach(jobj, key, val) {
+	    char * hkey = apr_pcalloc(p, strlen(key)+1);
+		char * hval = apr_pcalloc(p, strlen(json_object_get_string(val))+1);
+		strcpy(hkey, key);
+		strcpy(hval, json_object_get_string(val));
+		apr_hash_set(conf->php_config, hkey, APR_HASH_KEY_STRING, hval);
+		strcat(php_config_str, hkey);
+		strcat(php_config_str, "=");
+		strcat(php_config_str, hval);
+		strcat(php_config_str, ";");
+    }
+    json_object_put(jpwd);
+    conf->cache = (char*) apr_psprintf(p,"%s|%s|%s|%s|%s|%s",
                                              conf->uri,
                                              conf->vhost,
                                              conf->user,
                                              conf->directory,
                                              conf->mysql_socket,
-                                             conf->php_config);
-	conf->added = 0;
-	return 0;
+                                             php_config_str);
+    conf->added = 0;
+    return 0;
 }
 
 
 int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *conf,apr_pool_t * p) {
     char *json_data;
 
-	redisReply *reply;
+    redisReply *reply;
     struct timeval timeout = { 1, 500000 }; // 1.5 seconds
 
-	redis_context = redisConnectUnixWithTimeout(REDIS_SOCKET, timeout);
+    redis_context = redisConnectUnixWithTimeout(REDIS_SOCKET, timeout);
+    if (redis_context == NULL || redis_context->err) {
+        redisFree(redis_context);
+        return 1;
+    }
 
-	if (redis_context == NULL || redis_context->err) {
-		redisFree(redis_context);
-		return 1;
-	}
+    reply = redisCommand(redis_context,"GET %s/%s", "WEBHOST/v1", host);
 
-	reply = redisCommand(redis_context,"GET %s/%s", "WEBHOST/v1", host);
-
-	if (reply->type == REDIS_REPLY_STRING) {
-		json_data = malloc(reply->len+1);
-		memset(json_data,0,reply->len+1);
-		strncpy(json_data,reply->str,reply->len+1);
-	} else {
-	    freeReplyObject(reply);
-	    redisFree(redis_context);
+    if (reply->type == REDIS_REPLY_STRING) {
+        json_data = apr_pcalloc(p, reply->len+1);
+        strncpy(json_data,reply->str,reply->len+1);
+    } else {
+        freeReplyObject(reply);
+        redisFree(redis_context);
         return 2;
-	}
+    }
 
-	freeReplyObject(reply);
-	redisFree(redis_context);
-	
+    freeReplyObject(reply);
+    redisFree(redis_context);
+
     return vhost_parseconfig(json_data,conf,p);
 }

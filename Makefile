@@ -85,7 +85,7 @@ test_file: test_file.c vhosts_db_file.c
 install: $(SRCS)
 	echo $(PHPVER)
 #	$(APXS) -i -a -c $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
-	$(APXS) -i -c  $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
+	$(APXS)  -c  $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
 
 clean:
 	$(RM) $(OBJS) $(APACHE_MODULE) mod_vhs.slo mod_vhs.lo mod_vhs.la mod_vhs_alias.la mod_vhs_alias.lo mod_vhs_alias.slo vhosts_db_*.lo vhosts_db_*.slo test_file.o test_redis.o test_file test_redis

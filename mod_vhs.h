@@ -155,13 +155,13 @@ typedef struct mod_vhs_request_t {
     char *associateddomain;		/* The real server name */
     char *admin;			/* ServerAdmin or email for admin */
     char *docroot;			/* DocumentRoot */
-    char *phpoptions;			/* PHP Options */
     char *uid;				/* Suexec Uid */
     char *gid;				/* Suexec Gid */
     int vhost_found;			/* set to 1 if the struct is field with vhost information, 0 if not, -1 if the vhost does not exist  */
     char *mysql_socket;                 /* Path for MySQL socket */
     char *php_mode;                     /* Mode for PHP */
     char *php_modules;			/* Modules for PHP */
+    apr_hash_t *php_config;     /* PHP Options for ini_set (Hashtable) */
     char *gecos;                     /* GECOS : username */
 
 	/* cache management */

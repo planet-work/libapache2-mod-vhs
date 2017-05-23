@@ -299,9 +299,13 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
      * it moved to a new address. */
 
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init  uig/euid = %i/%i",getuid(),geteuid());
+
+	return; /// TODO CACHE
 	
     rv = apr_global_mutex_child_init(&vhr->cache_mutex,
                                      vhr->cache_mutex_lockfile, p); 
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init get global mutex");
+
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "Failed to attach to "
                      "mod_vhs global mutex file '%s'",
@@ -312,7 +316,9 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
 
     /* We only need to attach to the segment if we didn't inherit
      * it from the parent process (ie. Windows) */
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init Checking cache segment");
     if (!vhr->cache_shm) {
+        VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init No cache segment");
         rv = apr_shm_attach(&vhr->cache_shm, vhr->cache_shm_file, p);
         if (rv != APR_SUCCESS) {
             ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "Failed to attach to "
@@ -351,21 +357,15 @@ static int vhs_init_handler(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * 
 		vhs_config_rec *vhr = (vhs_config_rec *) ap_get_module_config(sp->module_config,
 									      &vhs_module);
 
-		if (vhr->itk_enable) {
-			if (!itk_enable) {
-				vhr->itk_enable = 0;
-			} else {
-				itk_conf *cfg = (itk_conf *) ap_get_module_config(sp->module_config,
-										  mpm_itk_module);
-				vhr->itk_defuid = cfg->uid;
-				vhr->itk_defgid = cfg->gid;
-				vhr->itk_defusername = cfg->username;
+		itk_conf *cfg = (itk_conf *) ap_get_module_config(sp->module_config,
+								  mpm_itk_module);
+		vhr->itk_defuid = cfg->uid;
+		vhr->itk_defgid = cfg->gid;
+		vhr->itk_defusername = cfg->username;
 
-				ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, sp, "vhs_init_handler: itk uid='%d' itk gid='%d' "
-					     /*itk username='%s' */ , cfg->uid,
-					     cfg->gid /*, cfg->username */ );
-			}
-		}
+		ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, sp, "vhs_init_handler: itk uid='%d' itk gid='%d' "
+				 /*itk username='%s' */ , cfg->uid,
+				 cfg->gid /*, cfg->username */ );
 	}
 
 	ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "vhs_init_handler: mpm_itk.c is not loaded");
@@ -435,7 +435,8 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 	unsigned now = (unsigned)time(NULL);
 	int cache_found = 0;
 
-    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup :  CACHE counter = %u",vhr->cache->counter);
+	// TODO CACHE
+    // VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup :  CACHE counter = %u",vhr->cache->counter);
 
 	vhr->tenant = getenv("TENANT");
 	/*if (vhr->tenant == NULL || vhr->db_host == NULL) {
@@ -463,6 +464,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: search for vhost: '%s'", host);
 	p = new_vhost_config(r->pool);
 
+	/*
 	for (i = 0; i < sizeof(vhr->cache->added); i++) {
        if (now - vhr->cache->added[i] < vhr->cache_ttl && memcmp(host,&vhr->cache->keys[i],strlen(host)) == 0) {
 	       cache_conf = apr_pcalloc(r->pool, sizeof(vhr->cache->keys[i]));
@@ -470,9 +472,9 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
            VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: found cache for '%s' ==> %s", host,cache_conf);
 		   break;
 	   }
-	}
+	}*/
 
-	if (cache_conf != NULL && strlen(cache_conf) > 10) {
+	if (cache_conf != NULL && strlen(cache_conf) > 1000000000000000000) {
 	    res = vhost_parseconfline(cache_conf, p, r->pool);
         VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup:  conf from cache line %s",p->directory);
 		cache_found = 1;
@@ -491,7 +493,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 			p->user = "www-data";
 			p->directory = "/var/www/default/";
 			p->mysql_socket = "/var/run/mysqld/mysqld.sock";
-			p->php_config = "";
+			p->php_config = NULL;
 			p->cache = "localhost|localhost|www-data|/var/www/default/|/var/run/mysqld/mysqld.sock|";
 		}
 	}
@@ -546,8 +548,8 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 	//VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: php_mode: %s", reqc->php_mode);
 
 	/* phpopt_fromdb / options PHP */
-	reqc->phpoptions = apr_pstrdup(r->pool, p->php_config);
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: php_config: %s", reqc->phpoptions);
+	reqc->php_config = p->php_config;
+	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: php_config: %s","ARRAY");
 
 	/* PHP modules */
 	//reqc->php_modules = apr_pstrdup(r->pool, p->php_modules);
@@ -557,6 +559,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 	reqc->vhost_found = VH_VHOST_INFOS_FOUND;
 
 	apr_pool_userdata_set(reqc, VH_KEY, apr_pool_cleanup_null, r->pool);
+	/* TODO CACHE
 	if (strlen(p->cache) < sizeof(vhr->cache->entries[0]) && cache_found == 0) {
 		rv = apr_global_mutex_lock(vhr->cache_mutex);
 		 if (rv != APR_SUCCESS) {
@@ -582,6 +585,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 
     apr_global_mutex_unlock(vhr->cache_mutex);
 	}
+	*/
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: DONE");
 
 	return OK;
@@ -689,7 +693,7 @@ static int vhs_itk_post_read(request_rec * r)
  * This function will configure on the fly the php like php.ini will do
  */
 
-static void vhs_php_ini(char *name, char *value)
+static void vhs_php_ini(char *name, char *value, request_rec * r)
 {
 #ifdef VH_PHP7
 	php_conf_rec *d = NULL;
@@ -699,11 +703,10 @@ static void vhs_php_ini(char *name, char *value)
 		//fprintf(stderr,"Unable to set %s=%s\n", key->val,value);
 	}
 	zend_string_release(key);
-
 #else
 	int res;
-	res = zend_alter_ini_entry(name, strlen(name), value, strlen(value), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-	fprintf(stderr,"ZEND ALTER INI %s > %s ==> %i\n",name,value,res);
+	res = zend_alter_ini_entry(name, strlen(name)+1, value, strlen(value), ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
+	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "ZEND ALTER INI %s[%i] > %s[%i] ==> %i", name,strlen(name)+1,value,strlen(value),res);
 #endif
 
 }
@@ -724,7 +727,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: path ? %s", reqc->docroot);
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: mysql_socket ? %s", reqc->mysql_socket);
-	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_config ? %s", reqc->phpoptions);
+	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: php_config ? %s", "ARRAY");
 
 	/*
 	 * Some Basic PHP stuff, thank to Igor Popov module
@@ -736,7 +739,7 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP INI  %s / %i  [%s] --- %u",php_module->name,php_module->module_index,r->server->server_hostname,zend_hash_num_elements(&php_conf->config));
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP INI session.save_path=%s",zend_ini_string("session.save_path",strlen("session.save_path"),0));
 
-	vhs_php_ini("doc_root", reqc->docroot);
+	vhs_php_ini("doc_root", reqc->docroot, r);
 
 	/*
 	 * vhs_PHPopen_baserdir    \ vhs_append_open_basedir |  support
@@ -773,43 +776,17 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 	 */
 	if (vhr->phpopt_fromdb) {
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: PHP from DB engaged");
-		char *retval;
-		char *state;
-		char *my_phpconfig;
-
-		my_phpconfig = apr_pstrdup(r->pool, reqc->phpoptions);
-
-		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: DB => %s", my_phpconfig);
-
 		/* Custom PHP settings */
-		if (my_phpconfig == NULL) {
-			my_phpconfig = "";
-		}
-
-		if ((ap_strchr(my_phpconfig, ';') != NULL)
-		    && (ap_strchr(my_phpconfig, '=') != NULL)) {
-
-			retval = apr_strtok(my_phpconfig, ";", &state);
-			while (retval != NULL) {
-				char *key = NULL;
-				char *val = NULL;
-				char *strtokstate = NULL;
-
-				key = apr_strtok(retval, "=", &strtokstate);
-				val = apr_strtok(NULL, "=", &strtokstate);
+		if (reqc->php_config != NULL) {
+		    apr_hash_index_t *hidx = NULL;
+		    for (hidx = apr_hash_first(r->pool, reqc->php_config); hidx; hidx = apr_hash_next(hidx)) { 
+				char *key = (char *) apr_hash_this_key(hidx);
+				char *val = (char *) apr_hash_this_val(hidx);
 				if (val != NULL) {
 					VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG,
 							0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", key, val);
-					vhs_php_ini(key, val);
+					vhs_php_ini(key, val, r);
 				}
-				/*
-				   } else {
-				   VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Zend PHP Module => %s", key);
-				   char *modname = apr_pcalloc(r->pool,strlen(key)+4);
-				   sprintf(modname,"%s.so", key); 
-				   zend_alter_ini_entry("extension", strlen("extension")+1, modname, strlen(modname)+4, ZEND_INI_SYSTEM, ZEND_INI_STAGE_ACTIVATE);
-				   } */
-				retval = apr_strtok(NULL, ";", &state);
 			}
 		} else {
 			VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: no PHP stuff found.");
@@ -817,24 +794,24 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 
 		/* Settings depending on mysql socket value */
 	    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Setting Mysql socket");
-		vhs_php_ini("mysql.default_socket", reqc->mysql_socket);
-		vhs_php_ini("mysqli.default_socket", reqc->mysql_socket);
-		vhs_php_ini("pdo_mysql.default_socket", reqc->mysql_socket);
+		vhs_php_ini("mysql.default_socket", reqc->mysql_socket, r);
+		vhs_php_ini("mysqli.default_socket", reqc->mysql_socket, r);
+		vhs_php_ini("pdo_mysql.default_socket", reqc->mysql_socket, r);
 
 		/* sendmail_secure */
 	    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Setting sendmail-secure :%s",reqc->associateddomain);
 		char *sendmail_path = (char *) apr_pcalloc(r->pool, strlen(SENDMAIL_PATH)
 						     + strlen(reqc->associateddomain) + 1);
 		sprintf(sendmail_path,"%s %s",SENDMAIL_PATH,reqc->associateddomain);
-		vhs_php_ini("sendmail_path", sendmail_path);
+		vhs_php_ini("sendmail_path", sendmail_path, r);
 
 		/* Redis sessions */
 	    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Setting session handler");
 		char *save_path = (char *)
-		    apr_pcalloc(r->pool,strlen(REDIS_PATH) + strlen(vhr->tenant) + strlen(reqc->gecos) + 2);
-		sprintf(save_path,"%s_%s_%s",REDIS_PATH,vhr->tenant,reqc->gecos);
-		vhs_php_ini("session.save_path", save_path);
-		vhs_php_ini("session.save_handler", "redis");
+		    apr_pcalloc(r->pool,strlen(REDIS_PATH) + strlen(reqc->gecos) + 2);
+		sprintf(save_path,"%s_%s",REDIS_PATH,reqc->gecos);
+		vhs_php_ini("session.save_path", save_path, r);
+		vhs_php_ini("session.save_handler", "redis", r);
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: session.save_path: %s", save_path);
 
 	}
@@ -875,12 +852,6 @@ static int vhs_translate_name(request_rec * r)
 	/* If VHS is not enabled, then don't process request */
 	if (!vhr->enable) {
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: VHS Disabled ");
-		return DECLINED;
-	}
-
-	/* if not dbmode is set then decline */
-	if (vhr->db_mode == 0) {
-		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: VHS Disabled because vhs_dbmode is not specified.");
 		return DECLINED;
 	}
 
@@ -1088,7 +1059,7 @@ static void register_hooks(apr_pool_t * p)
 	ap_hook_post_read_request(vhs_itk_post_read, NULL, aszSuc_itk, APR_HOOK_REALLY_FIRST);
 	//ap_hook_header_parser(vhs_itk_post_read, NULL, aszSuc_itk, -15);
 
-	//ap_hook_child_init(vhs_child_init, NULL, NULL, APR_HOOK_REALLY_FIRST);
+	//ap_hook_child_init(vhs_child_init, NULL, NULL, APR_HOOK_REALLY_FIRST); /// 
 	ap_hook_post_config(vhs_init_handler, NULL, NULL, APR_HOOK_MIDDLE);
 	ap_hook_translate_name(vhs_translate_name, aszPre, aszSucc, APR_HOOK_FIRST);
 	//ap_hook_handler(vhs_php_config, NULL, NULL, APR_HOOK_FIRST);

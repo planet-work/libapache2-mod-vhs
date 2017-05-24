@@ -96,6 +96,14 @@
 # endif
 #endif
 
+
+/*
+ *  Apache 2.4 per module log
+ */
+#ifdef APLOG_USE_MODULE
+APLOG_USE_MODULE(vhs);
+#endif 
+
 /*
  * Include php support
  */

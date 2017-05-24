@@ -51,14 +51,13 @@ void free_vhost_config(struct vhost_config *conf,apr_pool_t * p) {
 
 int vhost_parseconfline(const char *line,struct vhost_config *conf,apr_pool_t * p) {
     char * tok;
+    char *retval;
+	char *key = NULL;
+	char *val = NULL;
+	char *strtokstate = NULL;
+	char *php_conf;
     int i = 0;
     char * p2;
-
-
-    //fprintf(stderr,"***** parsing line************* \n");
-    //fflush(stderr);
-    //fprintf(stderr,"***** LINE %s \n", line);
-    //fflush(stderr);
 
 
     tok = apr_pcalloc(p,sizeof(char) * strlen(line)+1);
@@ -103,7 +102,21 @@ int vhost_parseconfline(const char *line,struct vhost_config *conf,apr_pool_t * 
                 break;
 
             case 5: // PHP_CONFIG 
-				conf->php_config = apr_hash_make(p);
+				php_conf = (char *) apr_pcalloc(p, strlen(tok)+1);
+				strncpy(php_conf,tok,strlen(tok)+1);
+
+                conf->php_config = apr_hash_make(p);
+                if ((strchr(php_conf, ';') != NULL) && (strchr(php_conf, '=') != NULL)) { 
+                    retval = apr_strtok(php_conf, ";", &php_conf);
+                    while (retval != NULL) {
+                        key = apr_strtok(retval, "=", &strtokstate);
+                        val = apr_strtok(NULL, "=", &strtokstate);
+                        if (val != NULL) { 
+							apr_hash_set(conf->php_config, key, APR_HASH_KEY_STRING, val);
+                        }
+                        retval = apr_strtok(NULL, ";", &php_conf);
+                    }
+                }
                 //conf->php_config = (char *) apr_pcalloc(p,2048);
                 //strncpy(conf->php_config, tok, strlen(tok));
                 break;
@@ -165,18 +178,18 @@ int vhost_parseconfig(const char *json_data,struct vhost_config *conf,apr_pool_t
     strcpy(conf->mysql_socket,json_object_get_string(jobj)); 
 
     json_object_object_get_ex(jback, "php_config",&jobj);
-	char * php_config_str = apr_pcalloc(p,2000);
+    char * php_config_str = apr_pcalloc(p,2000);
     conf->php_config = apr_hash_make(p);
-	json_object_object_foreach(jobj, key, val) {
-	    char * hkey = apr_pcalloc(p, strlen(key)+1);
-		char * hval = apr_pcalloc(p, strlen(json_object_get_string(val))+1);
-		strcpy(hkey, key);
-		strcpy(hval, json_object_get_string(val));
-		apr_hash_set(conf->php_config, hkey, APR_HASH_KEY_STRING, hval);
-		strcat(php_config_str, hkey);
-		strcat(php_config_str, "=");
-		strcat(php_config_str, hval);
-		strcat(php_config_str, ";");
+    json_object_object_foreach(jobj, key, val) {
+        char * hkey = apr_pcalloc(p, strlen(key)+1);
+        char * hval = apr_pcalloc(p, strlen(json_object_get_string(val))+1);
+        strcpy(hkey, key);
+        strcpy(hval, json_object_get_string(val));
+        apr_hash_set(conf->php_config, hkey, APR_HASH_KEY_STRING, hval);
+        strcat(php_config_str, hkey);
+        strcat(php_config_str, "=");
+        strcat(php_config_str, hval);
+        strcat(php_config_str, ";");
     }
     json_object_put(jpwd);
     conf->cache = (char*) apr_psprintf(p,"%s|%s|%s|%s|%s|%s",

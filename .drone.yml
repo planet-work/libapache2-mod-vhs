@@ -17,7 +17,8 @@ pipeline:
       - scan-build make test_redis
       - make
       - make test_redis
-      - valgrind ./test_redis
+      - ./test_redis website.com
+      - valgrind ./test_redis website.com
       - dpkg-buildpackage -b
 
   pkg:

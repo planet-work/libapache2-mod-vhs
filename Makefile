@@ -29,9 +29,9 @@ INDENT = /usr/bin/indent
 # is redefining strangely some headers.... :/
 
 #CFLAGS= -DDEBIAN -I/usr/include/apr-0
-#CFLAGS= -g 
+CFLAGS= 
 GCCGLAGS= -Wall -fdiagnostics-color=auto  -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes
-APXSFLAGS= -Wc,-fdiagnostics-color=auto -Wc,-Wall  -Wc,-Wstrict-prototypes -Wc,-Wpointer-arith -Wc,-Wmissing-prototypes
+APXSFLAGS= -Wc,-fdiagnostics-color=auto -Wc,-Wall  -Wc,-Wstrict-prototypes -Wc,-Wpointer-arith -Wc,-Wmissing-prototypes  -Wc,-fstack-protector-strong -Wc,-Wformat -Wc,-Werror=format-security
 PHPVER=$(shell php -v 2>&1 | head -1 | cut -c 1-5)
 ifeq ($(PHPVER),PHP 5)
   PHP_INC=/usr/include/php5/
@@ -41,6 +41,8 @@ else
 endif
 
 CFLAGS+= -I/usr/local/include -I$(PHP_INC) -I$(PHP_INC)/main/ -I$(PHP_INC)/TSRM -I$(PHP_INC)/Zend
+
+APXSCFLAGS=$(CFLAGS)
 
 
 #CFLAGS+= -DVH_DEBUG 
@@ -85,7 +87,7 @@ test_file: test_file.c vhosts_db_file.c
 install: $(SRCS)
 	echo $(PHPVER)
 #	$(APXS) -i -a -c $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
-	$(APXS)  -c  $(APXSFLAGS) $(LDFLAGS) $(CFLAGS) $(SRCS)
+	$(APXS)  -c  $(APXSFLAGS) $(APXSCFLAGS) $(SRCS)
 
 clean:
 	$(RM) $(OBJS) $(APACHE_MODULE) mod_vhs.slo mod_vhs.lo mod_vhs.la mod_vhs_alias.la mod_vhs_alias.lo mod_vhs_alias.slo vhosts_db_*.lo vhosts_db_*.slo test_file.o test_redis.o test_file test_redis

@@ -29,6 +29,8 @@ pipeline:
   bundle:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
     commands:
+      - echo "deb http://ftp.fr.debian.org/debian/ ${DEBIAN_VERSION}-backports main" > /etc/apt/sources.list.d/backports.list
+      - apt-get update >/dev/null
       - '[ "${DEBIAN_VERSION}" = "wheezy" ] && apt-get install -y apache2-prefork-dev php5-dev || apt-get install -y apache2-dev'
       - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y php7.0-dev || apt-get install -y php5-dev'
       - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y libhiredis-dev libjson-c-dev || apt-get install -y -t ${DEBIAN_VERSION}-backports libhiredis-dev libjson-c-dev'

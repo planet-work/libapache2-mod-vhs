@@ -9,7 +9,7 @@ pipeline:
       - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y cmake libhiredis-dev libhiredis-dbg valgrind redis-server clang libjson-c-dev || apt-get install -y -t ${DEBIAN_VERSION}-backports  cmake libhiredis-dev libhiredis-dbg valgrind redis-server clang libjson-c-dev'
       - sed -i -e "s/6379/6380/" /etc/redis/redis.conf
       - echo "unixsocket /var/run/redis/redis-webconf.sock" >> /etc/redis/redis.conf
-      - /etc/init.d/redis-server start
+      - /etc/init.d/redis-server start && sleep 3
       - tests/setup_tests.sh
       - scan-build make
       - scan-build make test_redis
@@ -19,14 +19,52 @@ pipeline:
       - valgrind ./test_redis website.com
       - dpkg-buildpackage -b
 
+  testing-suffix:
+    image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
+    commands:
+        - dch -l ~build`date +"%y%m%d%H%M"`deb`lsb_release -r -s | cut -d'.' -f1`u   `git rev-parse HEAD | cut -c1-8`
+    when:
+      event: push
+
+  bundle:
+    image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
+    commands:
+      - '[ "${DEBIAN_VERSION}" = "wheezy" ] && apt-get install -y apache2-prefork-dev php5-dev || apt-get install -y apache2-dev'
+      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y php7.0-dev || apt-get install -y php5-dev'
+      - apt-get install -y libhiredis-dev libjson-c-dev
+      - dpkg-buildpackage -b
+      - fakeroot debian/rules clean
+
+  pkg-testing:
+    image: appleboy/drone-scp
+    host: pippin.planet-work.net
+    username: pkg
+    source: ../*.deb
+    target: incoming-testing/libapache2-mod-vhs/${DEBIAN_VERSION}
+    secrets: [ PLUGIN_KEY ]
+    when:
+      event: tag
+
+  aptly-testing:
+    image: appleboy/drone-ssh
+    host: pippin.planet-work.net
+    user: pkg
+    script:
+      - aptly repo add debian-${DEBIAN_VERSION}-testing incoming-testing/libapache2-mod-vhs/${DEBIAN_VERSION} && aptly publish update ${DEBIAN_VERSION}-testing debian 
+    when:
+    secrets: [ PLUGIN_KEY ]
+      event: tag
+
+
   pkg:
     image: appleboy/drone-scp
     host: pippin.planet-work.net
     username: pkg
     source: ../*.deb
     target: incoming/libapache2-mod-vhs/${DEBIAN_VERSION}
+    secrets: [ PLUGIN_KEY ]
     when:
-        event: tag
+      event: tag
 
   aptly:
     image: appleboy/drone-ssh
@@ -35,6 +73,7 @@ pipeline:
     script:
       - aptly repo add debian-${DEBIAN_VERSION} incoming/libapache2-mod-vhs/${DEBIAN_VERSION} && aptly publish update ${DEBIAN_VERSION} debian 
     when:
+    secrets: [ PLUGIN_KEY ]
       event: tag
 
 matrix:

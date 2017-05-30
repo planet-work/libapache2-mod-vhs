@@ -1,7 +1,7 @@
 Source: libapache2-mod-vhs
 Priority: extra
 Maintainer: Frédéric VANNIÈRE <f.vanniere@planet-work.com>
-Build-Depends: debhelper (>= 8.0.0), apache2-prefork-dev, libhiredis-dev, libjson-c-dev
+Build-Depends: debhelper (>= 8.0.0), apache2-dev | apache2-prefork-dev, libhiredis-dev, libjson-c-dev, php5-dev | php7.0-dev
 Standards-Version: 3.9.3
 Section: libs
 Homepage: http://www.planet-work.com/

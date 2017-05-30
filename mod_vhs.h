@@ -107,10 +107,6 @@ APLOG_USE_MODULE(vhs);
 /*
  * Include php support
  */
-/*
- * #define HAVE_MOD_PHP_SUPPORT
- */
-
 #include <zend.h>
 #include <zend_API.h>
 #include <zend_ini.h>

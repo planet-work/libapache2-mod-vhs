@@ -1,14 +1,12 @@
 pipeline:
-  clone:
-    image: plugins/git
-    tags: true
-
   build:
-    image: dock.pw.fr/pw/debpkg:jessie
+    image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
     commands:
-      - echo "deb http://ftp.fr.debian.org/debian/ jessie-backports main" > /etc/apt/sources.list.d/backports.list
+      - echo "deb http://ftp.fr.debian.org/debian/ ${DEBIAN_VERSION}-backports main" > /etc/apt/sources.list.d/backports.list
       - apt-get update >/dev/null
-      - apt-get install -y -t jessie-backports cmake libhiredis-dev libhiredis-dbg valgrind redis-server clang php5-dev libjson-c-dev
+      - '[ "${DEBIAN_VERSION}" = "wheezy" ] && apt-get install -y apache2-prefork-dev php5-dev || apt-get install -y apache2-dev'
+      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y php7.0-dev || apt-get install -y php5-dev'
+      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y cmake libhiredis-dev libhiredis-dbg valgrind redis-server clang libjson-c-dev || apt-get install -y -t ${DEBIAN_VERSION}-backports  cmake libhiredis-dev libhiredis-dbg valgrind redis-server clang libjson-c-dev'
       - sed -i -e "s/6379/6380/" /etc/redis/redis.conf
       - echo "unixsocket /var/run/redis/redis-webconf.sock" >> /etc/redis/redis.conf
       - /etc/init.d/redis-server start
@@ -26,7 +24,7 @@ pipeline:
     host: pippin.planet-work.net
     username: pkg
     source: ../*.deb
-    target: incoming/libapache2-mod-vhs/jessie
+    target: incoming/libapache2-mod-vhs/${DEBIAN_VERSION}
     when:
         event: tag
 
@@ -35,11 +33,13 @@ pipeline:
     host: pippin.planet-work.net
     user: pkg
     script:
-      - aptly repo add debian-jessie incoming/libapache2-mod-vhs/jessie && aptly publish update jessie debian 
+      - aptly repo add debian-${DEBIAN_VERSION} incoming/libapache2-mod-vhs/${DEBIAN_VERSION} && aptly publish update ${DEBIAN_VERSION} debian 
     when:
       event: tag
 
 matrix:
   DEBIAN_VERSION:
+    - wheezy
     - jessie
+    - stretch
 

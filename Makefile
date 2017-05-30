@@ -29,29 +29,33 @@ INDENT = /usr/bin/indent
 # is redefining strangely some headers.... :/
 
 #CFLAGS= -DDEBIAN -I/usr/include/apr-0
-CFLAGS= 
-GCCGLAGS= -Wall -fdiagnostics-color=auto  -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes
-APXSFLAGS= -Wc,-fdiagnostics-color=auto -Wc,-Wall  -Wc,-Wstrict-prototypes -Wc,-Wpointer-arith -Wc,-Wmissing-prototypes  -Wc,-fstack-protector-strong -Wc,-Wformat -Wc,-Werror=format-security
-PHPVER=$(shell php -v 2>&1 | head -1 | cut -c 1-5)
-ifeq ($(PHPVER),PHP 5)
-  PHP_INC=/usr/include/php5/
-else
-  PHP_INC=/usr/include/php/20151012/
-  CFLAGS+= -DVH_PHP7
+DEBVERSION = $(shell lsb_release -sc)
+
+GCCGLAGS= -Wall -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes
+APXSFLAGS= -Wc,-Wall  -Wc,-Wstrict-prototypes -Wc,-Wpointer-arith -Wc,-Wmissing-prototypes -Wc,-Wformat -Wc,-Werror=format-security
+APXSCFLAGS=
+
+ifneq "$(DEBVERSION)" "wheezy"
+	GCCGLAGS += -fdiagnostics-color=auto
+	APXSFLAGS +=  -Wc,-fdiagnostics-color=auto  -Wc,-fstack-protector-strong
 endif
 
-CFLAGS+= -I/usr/local/include -I$(PHP_INC) -I$(PHP_INC)/main/ -I$(PHP_INC)/TSRM -I$(PHP_INC)/Zend
+PHPVER=$(shell php -v 2>&1 | head -1 | cut -c 1-5)
+ifeq "$(PHPVER)" "PHP 7"
+  PHP_INC=/usr/include/php/20151012/
+  CFLAGS+= -DVH_PHP7
+  APXSCFLAGS+= -DVH_PHP7
+else
+  PHP_INC=/usr/include/php5/
+endif
 
-APXSCFLAGS=$(CFLAGS)
+
+
+CFLAGS+= -I/usr/local/include -I$(PHP_INC) -I$(PHP_INC)/main/ -I$(PHP_INC)/TSRM -I$(PHP_INC)/Zend
+APXSCFLAGS += -I/usr/local/include -I$(PHP_INC) -I$(PHP_INC)/main/ -I$(PHP_INC)/TSRM -I$(PHP_INC)/Zend
 
 
 #CFLAGS+= -DVH_DEBUG 
-CFLAGS+= -DHAVE_MOD_PHP_SUPPORT 
-CFLAGS+= -DHAVE_MPM_ITK_SUPPORT
-CFLAGS+= -DHAVE_MOD_REDIS_SUPPORT
-#CFLAGS+= -DHAVE_MOD_FLATFILE_SUPPORT
-#CFLAGS+= -DHAVE_MOD_DBD_SUPPORT
-#CFLAGS+= -DHAVE_LDAP_SUPPORT
 # If you have an old PHP (eg < 5.3.x), then you can enable safe_mode tricks
 # on your OWN risk
 #CFLAGS+= -DOLD_PHP

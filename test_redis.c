@@ -8,6 +8,8 @@ int main(int argc, char *argv[]) {
 	apr_pool_t *p;
 	apr_hash_index_t *hidx = NULL;
 	int res;
+	char *val;
+	char *key;
 
 	apr_initialize();
 	apr_pool_create(&p, NULL);
@@ -38,7 +40,8 @@ int main(int argc, char *argv[]) {
 	printf("  - mysql_socket: %s\n", conf->mysql_socket);
 	printf("  - php_config: \n");
 	for (hidx = apr_hash_first(p, conf->php_config); hidx; hidx = apr_hash_next(hidx)) {
-	    printf("       o %s=%s\n", (char *) apr_hash_this_key(hidx), (char *) apr_hash_this_val(hidx));
+		apr_hash_this(hidx, &key, NULL, &val);
+	    printf("       o %s=%s\n", key, val);
 	}
 	printf("\n");
 	printf("  - cache: %s\n", conf->cache);
@@ -62,7 +65,8 @@ int main(int argc, char *argv[]) {
 	printf("  - mysql_socket: %s\n", conf_cache->mysql_socket);
 	printf("  - php_config: \n");
 	for (hidx = apr_hash_first(p, conf_cache->php_config); hidx; hidx = apr_hash_next(hidx)) {
-	    printf("       o %s=%s\n", (char *) apr_hash_this_key(hidx), (char *) apr_hash_this_val(hidx));
+		apr_hash_this(hidx, &key, NULL, &val);
+	    printf("       o %s=%s\n", (char *) key, (char *) val);
 	}
 	printf("\n");
 	printf("  - cache: %s\n", conf_cache->cache);

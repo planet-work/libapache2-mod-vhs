@@ -56,7 +56,6 @@
  */
 /*
  * Brief instructions to use mod_vhs with apache2-mpm-itk support.
- * - To compile mod_vhs with apache2-mpm-itk support add "-DHAVE_MPM_ITK_SUPPORT" to your "CFLAGS".
  * - To enable apache2-mpm-itk support set "vhs_itk_enable On" in your <VirtualHost> section.
  * - Pass the uidNumber and gidNumber to the uid and gid directive in your home.conf like the example in the README file.
  */
@@ -811,8 +810,11 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 		if (reqc->php_config != NULL) {
 		    apr_hash_index_t *hidx = NULL;
 		    for (hidx = apr_hash_first(r->pool, reqc->php_config); hidx; hidx = apr_hash_next(hidx)) { 
-				char *key = (char *) apr_hash_this_key(hidx);
-				char *val = (char *) apr_hash_this_val(hidx);
+				char *key;
+				char *val;
+				//char *key = (char *) apr_hash_this_key(hidx);
+				//char *val = (char *) apr_hash_this_val(hidx);
+				apr_hash_this(hidx, &key, NULL, &val);
 				if (val != NULL) {
 					VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG,
 							0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", key, val);
@@ -872,11 +874,11 @@ static int vhs_translate_name(request_rec * r)
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: BEGIN ************************************************");
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: the_request:%s", r->the_request);
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: unparsed_uri:%s", r->unparsed_uri);
-	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: useragent_ip:%s", r->useragent_ip);
+    //VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: useragent_ip:%s", r->useragent_ip);
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: method:%s", r->method);
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: uri:%s", r->uri);
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: path_info:%s", r->path_info);
-	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: log_id:%s", r->log_id);
+	//VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: log_id:%s", r->log_id);
 	//VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: connection>id:%d", r->connection);
     //VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_translate_name: main:%d", r->main);
 

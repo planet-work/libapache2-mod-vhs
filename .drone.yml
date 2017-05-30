@@ -51,8 +51,8 @@ pipeline:
     user: pkg
     script:
       - aptly repo add debian-${DEBIAN_VERSION}-testing incoming-testing/libapache2-mod-vhs/${DEBIAN_VERSION} && aptly publish update ${DEBIAN_VERSION}-testing debian 
-    when:
     secrets: [ PLUGIN_KEY ]
+    when:
       event: tag
 
 
@@ -72,8 +72,8 @@ pipeline:
     user: pkg
     script:
       - aptly repo add debian-${DEBIAN_VERSION} incoming/libapache2-mod-vhs/${DEBIAN_VERSION} && aptly publish update ${DEBIAN_VERSION} debian 
-    when:
     secrets: [ PLUGIN_KEY ]
+    when:
       event: tag
 
 matrix:

@@ -1,4 +1,4 @@
-libapache2-mod-vhs (2.0-1) UNRELEASED; urgency=medium
+libapache2-mod-vhs (2.1-1) UNRELEASED; urgency=medium
 
   * PHP7 support 
   * big cleanups

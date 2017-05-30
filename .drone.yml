@@ -51,6 +51,7 @@ pipeline:
     host: pippin.planet-work.net
     user: pkg
     script:
+      - aptly repo remove debian-${DEBIAN_VERSION}-testing `aptly repo search debian-${DEBIAN_VERSION}-testing 'Name (~ libapache2-mod-vhs.*)' | xargs` || true
       - aptly repo add debian-${DEBIAN_VERSION}-testing incoming-testing/libapache2-mod-vhs/${DEBIAN_VERSION} && aptly publish update ${DEBIAN_VERSION}-testing debian 
     secrets: [ PLUGIN_KEY ]
     when:

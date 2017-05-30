@@ -31,7 +31,7 @@ pipeline:
     commands:
       - '[ "${DEBIAN_VERSION}" = "wheezy" ] && apt-get install -y apache2-prefork-dev php5-dev || apt-get install -y apache2-dev'
       - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y php7.0-dev || apt-get install -y php5-dev'
-      - apt-get install -y libhiredis-dev libjson-c-dev
+      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y libhiredis-dev libjson-c-dev || apt-get install -y -t ${DEBIAN_VERSION}-backports libhiredis-dev libjson-c-dev'
       - dpkg-buildpackage -b
       - fakeroot debian/rules clean
 
@@ -43,7 +43,7 @@ pipeline:
     target: incoming-testing/libapache2-mod-vhs/${DEBIAN_VERSION}
     secrets: [ PLUGIN_KEY ]
     when:
-      event: tag
+      event: push
 
   aptly-testing:
     image: appleboy/drone-ssh
@@ -53,7 +53,7 @@ pipeline:
       - aptly repo add debian-${DEBIAN_VERSION}-testing incoming-testing/libapache2-mod-vhs/${DEBIAN_VERSION} && aptly publish update ${DEBIAN_VERSION}-testing debian 
     secrets: [ PLUGIN_KEY ]
     when:
-      event: tag
+      event: push
 
 
   pkg:

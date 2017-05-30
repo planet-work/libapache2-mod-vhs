@@ -17,7 +17,6 @@ pipeline:
       - make test_redis
       - ./test_redis website.com
       - valgrind ./test_redis website.com
-      - dpkg-buildpackage -b
 
   testing-suffix:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}

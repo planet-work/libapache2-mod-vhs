@@ -4,7 +4,7 @@ libapache2-mod-vhs (2.0-1) UNRELEASED; urgency=medium
   * big cleanups
   * Redis DB support, removed all other databases code
   * local cache 
-  * new Apache configuration variabled
+  * new Apache configuration variable
 
  -- Frédéric VANNIÈRE <f.vanniere@planet-work.com>  Fri, 18 Mar 2016 13:42:00 +0100
 

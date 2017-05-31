@@ -17,6 +17,7 @@ pipeline:
       - make test_redis
       - ./test_redis website.com
       - valgrind ./test_redis website.com
+      - make clean
 
   testing-suffix:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}

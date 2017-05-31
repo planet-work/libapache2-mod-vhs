@@ -63,14 +63,8 @@
 #include "mod_vhs.h"
 
 #define VH_KEY "mod_vhs"
-#define VH_KEY_CACHE "cache"
-
-#define APACHE22 1
-
-#if APACHE22
-#define MUTEX_LOCKFILE "/run/apache2/vhs_mutex.lock"
+#define MUTEX_LOCKFILE "/var/run/apache2/vhs_mutex.lock"
 #define MUTEX_FILE "vhs_shm"
-#endif
 
 int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname, mod_vhs_request_t * reqc);
 /*
@@ -123,10 +117,8 @@ static void *vhs_create_server_config(apr_pool_t * p, server_rec * s)
 	vhr->php_sessions = REDIS_PATH;
 	vhr->php_sendmail = SENDMAIL_PATH;
 
-#if APACHE22
     vhr->cache_mutex_lockfile = MUTEX_LOCKFILE; //apr_pstrdup(p, MUTEX_LOCKFILE);
     vhr->cache_shm_file = NULL; //ap_server_root_relative(p, MUTEX_FILE);
-#endif
 	return (void *)vhr;
 }
 
@@ -189,11 +181,9 @@ static void *vhs_merge_server_config(apr_pool_t * p, void *parentv, void *childv
 	conf->aliases = apr_array_append(p, child->aliases, parent->aliases);
 	conf->redirects = apr_array_append(p, child->redirects, parent->redirects);
 
-#if APACHE22
     conf->cache_mutex_lockfile = parent->cache_mutex_lockfile;
     conf->cache_mutex = parent->cache_mutex;
     conf->cache_shm_file = parent->cache_shm_file;
-#endif
 
 	return conf;
 }
@@ -309,7 +299,6 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
 
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init  uig/euid = %i/%i",getuid(),geteuid());
 
-#if APACHE22
     apr_status_t rv;
     vhs_config_rec *vhr = ap_get_module_config(s->module_config,
                                                     &vhs_module);
@@ -321,11 +310,10 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
 
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init ICI1");
 	if (!vhr->cache_mutex_lockfile) {
-		ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "mod_vhs global mutex file is NULL");
+		ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, "mod_vhs global mutex file is NULL");
 		return;
 	}
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init ICI1a %s",vhr->cache_mutex_lockfile);
-	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init cache_mutex=%u", &vhr->cache_mutex);
     rv = apr_global_mutex_child_init(&vhr->cache_mutex,
                                      vhr->cache_mutex_lockfile, p); 
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init ICI2");
@@ -356,7 +344,6 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
     }
 
     vhr->cache = apr_shm_baseaddr_get(vhr->cache_shm);
-#endif
 }
 
 
@@ -391,20 +378,18 @@ static int vhs_init_handler(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * 
     }
 
 
-#if APACHE22
     apr_status_t rv;
     vhs_config_rec *scfg;
     apr_pool_t *global_pool;
     rv = apr_pool_create(&global_pool, NULL);
     scfg = ap_get_module_config(s->module_config, &vhs_module); 
     rv = apr_global_mutex_create(&scfg->cache_mutex, scfg->cache_mutex_lockfile, APR_LOCK_FCNTL, global_pool);
-	ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_init_handler: cache_mutex=%u", &scfg->cache_mutex);
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "vhs_init_handler: Failed to create "
 				                        "mod_vhs global mutex file '%s'",scfg->cache_mutex_lockfile);
         return HTTP_INTERNAL_SERVER_ERROR;
     }
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_init_handler: created mutex uid/euid=%i/%i @=%u",getuid(),geteuid(), scfg->cache_mutex);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_init_handler: created mutex uid/euid=%i/%i",getuid(),geteuid());
 
 
     rv = apr_shm_create(&scfg->cache_shm, 1024*1024, scfg->cache_shm_file, global_pool);
@@ -424,7 +409,6 @@ static int vhs_init_handler(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * 
 		memset(&scfg->cache->keys[i],'\0',sizeof(scfg->cache->keys[i]));
 		memset(&scfg->cache->entries[i],'\0',sizeof(scfg->cache->entries[i]));
 	}
-#endif
 
 	//apr_pool_create (scfg->cache->pool, NULL);
 	return OK;
@@ -486,7 +470,6 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 
 
 
-#if APACHE22
 	int cache_found = 0;
 	char *cache_conf = NULL;
 	int i = 0;
@@ -511,10 +494,6 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: fetch config for %s  uid/euid=%i/%i",host,getuid(),geteuid());
 	    res = vhost_getconfig(vhr->tenant, host, p, r->pool);
 	}
-#else
-	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: fetch config for %s/%s  uid/euid=%i/%i",vhr->tenant, host,getuid(),geteuid());
-	res = vhost_getconfig(vhr->tenant, host, p, r->pool);
-#endif
 
 	if (res > 0) {
 		VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: no config found for '%s' [res=%i]", host, res);
@@ -593,7 +572,6 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 
 	apr_pool_userdata_set(reqc, VH_KEY, apr_pool_cleanup_null, r->pool);
 
-#if APACHE22
 	if (vhr->cache_mutex != NULL) {
 		int rv;
 		if (strlen(p->cache) < sizeof(vhr->cache->entries[0]) && cache_found == 0) {
@@ -612,7 +590,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 						vhr->cache->keys[i][strlen(host)] = '\0';
 						memset(&vhr->cache->entries[i],'\0',sizeof(vhr->cache->entries[i]));
 						memcpy(&vhr->cache->entries[i],p->cache,strlen(p->cache)+1);
-						VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: cache entry set for %s [%s] %s size=%i",r->hostname,host,&vhr->cache->entries[i], (int) sizeof(vhr->cache->entries[i]));
+						VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: cache entry set for %s [%s] %s size=%i",r->hostname,host,(char*) &vhr->cache->entries[i], (int) sizeof(vhr->cache->entries[i]));
 						break;
 					}
 				}
@@ -622,7 +600,6 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
 		apr_global_mutex_unlock(vhr->cache_mutex);
 		}
 	}
-#endif 
 
 	VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: DONE");
 
@@ -810,15 +787,13 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 		if (reqc->php_config != NULL) {
 		    apr_hash_index_t *hidx = NULL;
 		    for (hidx = apr_hash_first(r->pool, reqc->php_config); hidx; hidx = apr_hash_next(hidx)) { 
-				char *key;
-				char *val;
-				//char *key = (char *) apr_hash_this_key(hidx);
-				//char *val = (char *) apr_hash_this_val(hidx);
+				const void *key;
+				void *val;
 				apr_hash_this(hidx, &key, NULL, &val);
 				if (val != NULL) {
 					VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG,
-							0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", key, val);
-					vhs_php_ini(key, val, r);
+							0, r->server, "vhs_php_config: Zend PHP Stuff => %s => %s", (char *) key, (char *) val);
+					vhs_php_ini((char *) key, val, r);
 				}
 			}
 		} else {
@@ -833,16 +808,16 @@ static void vhs_php_config(request_rec * r, vhs_config_rec * vhr, mod_vhs_reques
 
 		/* sendmail_secure */
 	    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Setting sendmail-secure :%s",reqc->associateddomain);
-		char *sendmail_path = (char *) apr_pcalloc(r->pool, strlen(SENDMAIL_PATH)
+		char *sendmail_path = (char *) apr_pcalloc(r->pool, strlen(vhr->php_sendmail)
 						     + strlen(reqc->associateddomain) + 1);
-		sprintf(sendmail_path,"%s %s",SENDMAIL_PATH,reqc->associateddomain);
+		sprintf(sendmail_path,"%s %s",vhr->php_sendmail,reqc->associateddomain);
 		vhs_php_ini("sendmail_path", sendmail_path, r);
 
 		/* Redis sessions */
 	    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: Setting session handler");
 		char *save_path = (char *)
-		    apr_pcalloc(r->pool,strlen(REDIS_PATH) + strlen(reqc->gecos) + 2);
-		sprintf(save_path,"%s_%s",REDIS_PATH,reqc->gecos);
+		    apr_pcalloc(r->pool,strlen(vhr->php_sessions) + strlen(reqc->gecos) + 2);
+		sprintf(save_path,"%s_%s",vhr->php_sessions,reqc->gecos);
 		vhs_php_ini("session.save_path", save_path, r);
 		vhs_php_ini("session.save_handler", "redis", r);
 		VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, r->server, "vhs_php_config: session.save_path: %s", save_path);

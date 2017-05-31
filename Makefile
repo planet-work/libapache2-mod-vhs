@@ -32,7 +32,7 @@ INDENT = /usr/bin/indent
 DEBVERSION = $(shell lsb_release -sc)
 
 GCCGLAGS= -Wall -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes
-APXSFLAGS= -Wc,-Wall  -Wc,-Wstrict-prototypes -Wc,-Wpointer-arith -Wc,-Wmissing-prototypes -Wc,-Wformat -Wc,-Werror=format-security
+APXSFLAGS= -Wc,-Wall  -Wc,-Wstrict-prototypes -Wc,-Wpointer-arith -Wc,-Wmissing-prototypes -Wc,-Wformat -Wc,-Werror=format-security -Wl,-lhiredis -Wl,-ljson-c
 APXSCFLAGS=
 
 ifneq "$(DEBVERSION)" "wheezy"

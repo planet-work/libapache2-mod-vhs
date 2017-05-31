@@ -8,8 +8,8 @@ int main(int argc, char *argv[]) {
 	apr_pool_t *p;
 	apr_hash_index_t *hidx = NULL;
 	int res;
-	char *val;
-	char *key;
+	const void *key;
+	void *val;
 
 	apr_initialize();
 	apr_pool_create(&p, NULL);
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	printf("  - php_config: \n");
 	for (hidx = apr_hash_first(p, conf->php_config); hidx; hidx = apr_hash_next(hidx)) {
 		apr_hash_this(hidx, &key, NULL, &val);
-	    printf("       o %s=%s\n", key, val);
+	    printf("       o %s=%s\n", (char*)key, (char*)val);
 	}
 	printf("\n");
 	printf("  - cache: %s\n", conf->cache);

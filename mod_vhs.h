@@ -3,9 +3,9 @@
  */
 #define VH_VERSION	"mod_vhs/2.0.0"
 
-#define SENDMAIL_PATH   "/usr/lib/ezadmin/modules/web/bin/sendmail_secure"
+#define SENDMAIL_PATH   "/etc/apache2/conf/sendmail-secure"
 #define OPEN_BASEDIR    "/usr/share/php:/etc/php5/:/tmp:/var/lib/php/"
-#define REDIS_PATH      "tcp://10.3.100.1:6379?prefix=phpredis_"
+#define REDIS_PATH      "tcp://10.3.100.1:6379?prefix=phpredis"
 #define REDIS_SOCKET    "/var/run/redis/redis-webconf.sock"
 
 /*
@@ -69,9 +69,6 @@
 #include "ap_config_auto.h"
 
 #include "vhosts_db_redis.h"
-
-/* XXX: Do we need that ? */
-//#include "ap_mpm.h" /* XXX */
 
 #include <stdlib.h>
 #include <stdio.h>

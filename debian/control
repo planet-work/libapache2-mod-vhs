@@ -11,5 +11,5 @@ Homepage: http://www.planet-work.com/
 Package: libapache2-mod-vhs
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, apache2-mpm-prefork | apache2-mpm-itk | libapache2-mpm-itk, libhiredis0.10 | libhiredis0.13, libjson-c2 | libjson-c3
+Depends: ${shlibs:Depends}, ${misc:Depends}, apache2-mpm-itk | libapache2-mpm-itk, libhiredis0.10 | libhiredis0.13, libjson-c2 | libjson-c3, libapache2-mod-php7.0 | libapache2-mod-php5
 Description: Mass virtualhosting, customized mod_vhs by PW

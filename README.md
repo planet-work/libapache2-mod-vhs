@@ -90,6 +90,12 @@ Configuration
 
 mod_vhs only works with mpm_itk (prefork).
 
+Docker and Capabilities
+=====
+
+ITK module 2.4 (Debian Jessie and Stretch) need `CAP_DAC_READ_SEARCH` capability which is dropped by Docker un unprivilefed containers.
+
+
 
 Author
 =====

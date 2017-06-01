@@ -2,7 +2,7 @@ pipeline:
 
   functional-test:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
-    privileged: true
+    #privileged: true
     commands:
       - echo "deb http://ftp.fr.debian.org/debian/ ${DEBIAN_VERSION}-backports main" > /etc/apt/sources.list.d/backports.list
       - echo "deb [arch=amd64] http://pkg.planet-work.com/debian ${DEBIAN_VERSION}-testing main" > /etc/apt/sources.list.d/planet-work.list

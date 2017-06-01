@@ -30,7 +30,7 @@ pipeline:
       - exit 1
     when:
       local: true
-      #event: DISABLED 
+      event: DISABLED 
 
   build:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}

@@ -1,6 +1,36 @@
 pipeline:
 
-
+  functional-test:
+    image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
+    privileged: true
+    commands:
+      - echo "deb http://ftp.fr.debian.org/debian/ ${DEBIAN_VERSION}-backports main" > /etc/apt/sources.list.d/backports.list
+      - echo "deb [arch=amd64] http://pkg.planet-work.com/debian ${DEBIAN_VERSION}-testing main" > /etc/apt/sources.list.d/planet-work.list
+      - apt-get update >/dev/null
+      - apt-get -y --allow-unauthenticated install libnss-redis libapache2-mod-vhs curl libcap2-bin wget unzip zip 
+      - '[ "${DEBIAN_VERSION}" = "wheezy" ] && apt-get install -y apache2-mpm-itk || apt-get install -y libapache2-mpm-itk'
+      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y libapache2-mod-php7.0 || apt-get install -y libapache2-mod-php5'
+      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y redis-server php7.0-mysql php-redis || apt-get install -y -t ${DEBIAN_VERSION}-backports redis-server php5-mysqlnd php5-redis'
+      - sed -i -e "s/6379/6380/" /etc/redis/redis.conf
+      - echo "unixsocket /var/run/redis/redis-webconf.sock" >> /etc/redis/redis.conf
+      - /etc/init.d/redis-server start && sleep 3
+      - chgrp www-data /var/run/redis/redis-webconf.sock
+      - sed -i -e "s/compat/compat redis/g" /etc/nsswitch.conf
+      - apache2 -v | grep "2\.2" && perl -pi -e "s/LogLevel warn/LogLevel debug/" /etc/apache2/sites-available/default || perl -pi -e "s/#LogLevel info ssl:warn/LogLevel trace8/" /etc/apache2/sites-available/000-default.conf
+      - apache2 -v | grep "2\.4" || perl -pi -e "s/#ServerName www.example.com/ServerName localhost/" /etc/apache2/sites-available/000-default.conf
+      - apache2 -v | grep "2\.2" && cp tests/apache-custom.conf /etc/apache2/conf.d/custom || cp tests/apache-custom.conf /etc/apache2/conf-available/custom.conf
+      - apache2ctl -L | grep -q EnableCapabilities && echo "EnableCapabilities Off" >> /etc/apache2/conf-available/custom.conf
+      - perl -pi -e "s/vhs_ConsulHost/vhs_RedisHost/" /etc/apache2/mods-available/vhs.conf
+      - dpkg -l | grep -q libapache2-mpm-itk && a2enmod mpm_itk && a2enconf custom ; a2enmod vhs && apache2ctl restart
+      - apache2 -v | grep "2\.2" && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server || DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server
+      - echo "[mysqld]" > /etc/mysql/conf.d/noauth.cnf && echo "skip-grant-tables" >> /etc/mysql/conf.d/noauth.cnf && service mysql restart
+      - bash -x tests/setup-tests.sh
+      - bash -x tests/run-tests.sh
+      - echo "========================================================================"
+      - exit 1
+    when:
+      local: true
+      #event: DISABLED 
 
   build:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
@@ -13,7 +43,7 @@ pipeline:
       - sed -i -e "s/6379/6380/" /etc/redis/redis.conf
       - echo "unixsocket /var/run/redis/redis-webconf.sock" >> /etc/redis/redis.conf
       - /etc/init.d/redis-server start && sleep 3
-      - tests/setup_tests.sh
+      - tests/setup-redisdb.sh
       - scan-build make
       - scan-build make test_redis
       - make
@@ -81,36 +111,6 @@ pipeline:
     secrets: [ PLUGIN_KEY ]
     when:
       event: tag
-
-  functional-tests:
-    image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
-    #privileged: true
-    commands:
-      - echo "deb http://ftp.fr.debian.org/debian/ ${DEBIAN_VERSION}-backports main" > /etc/apt/sources.list.d/backports.list
-      - echo "deb [arch=amd64] http://pkg.planet-work.com/debian ${DEBIAN_VERSION}-testing main" > /etc/apt/sources.list.d/planet-work.list
-      - apt-get update >/dev/null
-      - apt-get -y --allow-unauthenticated install libnss-redis libapache2-mod-vhs curl libcap2-bin
-      - '[ "${DEBIAN_VERSION}" = "wheezy" ] && apt-get install -y apache2-mpm-itk || apt-get install -y libapache2-mpm-itk'
-      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y libapache2-mod-php7.0 || apt-get install -y libapache2-mod-php5'
-      - '[ "${DEBIAN_VERSION}" = "stretch" ] && apt-get install -y redis-server php7.0-mysql php-redis || apt-get install -y -t ${DEBIAN_VERSION}-backports redis-server php5-mysqlnd php5-redis'
-      - sed -i -e "s/6379/6380/" /etc/redis/redis.conf
-      - echo "unixsocket /var/run/redis/redis-webconf.sock" >> /etc/redis/redis.conf
-      - /etc/init.d/redis-server start && sleep 3
-      - chgrp www-data /var/run/redis/redis-webconf.sock
-      - sed -i -e "s/compat/compat redis/g" /etc/nsswitch.conf
-      - '[ "${DEBIAN_VERSION}" = "wheezy" ] && perl -pi -e "s/LogLevel warn/LogLevel debug/" /etc/apache2/sites-available/default || perl -pi -e "s/#LogLevel info ssl:warn/LogLevel trace8/" /etc/apache2/sites-available/000-default.conf'
-      - '[ "${DEBIAN_VERSION}" = "wheezy" ] || perl -pi -e "s/#ServerName www.example.com/ServerName localhost/" /etc/apache2/sites-available/000-default.conf'
-      - cp tests/apache-custom.conf /etc/apache2/conf-available/custom.conf
-      - '[ "${DEBIAN_VERSION}" = "stretch" ] && echo "EnableCapabilities Off" >> /etc/apache2/conf-available/custom.conf'
-      - perl -pi -e "s/vhs_ConsulHost/vhs_RedisHost/" /etc/apache2/mods-available/vhs.conf
-      - dpkg -l | grep -q libapache2-mpm-itk && a2enmod mpm_itk && a2enconf custom ; a2enmod vhs && apache2ctl restart
-      - bash -x tests/setup-tests.sh
-      - bash -x tests/run-tests.sh
-      - echo "========================================================================"
-      - exit 1
-    when:
-      local: true
-      event: DISABLED 
 
 matrix:
   DEBIAN_VERSION:

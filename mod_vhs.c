@@ -354,15 +354,15 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
  */
 static int vhs_init_handler(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, server_rec * s)
 {
-
+        module *mpm_itk_module = NULL;
 	VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_init_handler: loading version %s.", VH_VERSION);
 
 	ap_add_version_component(pconf, VH_VERSION);
 
 	/* set default configuration for vhost */
-	module *mpm_itk_module = ap_find_linked_module("mpm_itk.c");
-	if (mpm_itk_module == NULL) {
-		ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "vhs_init_handler: mpm_itk.c is not loaded");
+	mpm_itk_module = ap_find_linked_module(MOD_ITK);
+        if (mpm_itk_module == NULL) {
+    	       ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "vhs_init_handler: mpm_itk.c is not loaded");
 	} else {
 		server_rec *sp;
 		for (sp = s; sp; sp = sp->next) {
@@ -648,7 +648,7 @@ static int vhs_itk_post_read(request_rec * r)
 		libhome_gid = vhr->itk_defgid;
 	}
 
-	module *mpm_itk_module = ap_find_linked_module("mpm_itk.c");
+	module *mpm_itk_module = ap_find_linked_module(MOD_ITK);
 	if (mpm_itk_module == NULL) {
 		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "vhs_itk_post_read: mpm_itk.c is not loaded");
 		return HTTP_INTERNAL_SERVER_ERROR;
@@ -1049,7 +1049,7 @@ static const command_rec vhs_commands[] = {
 static void register_hooks(apr_pool_t * p)
 {
 	/* Modules that have to be loaded before mod_vhs */
-	static const char *const aszPre[] = { "mod_userdir.c", "mod_vhost_alias.c", "mpm_itk.c", 
+	static const char *const aszPre[] = { "mod_userdir.c", "mod_vhost_alias.c", MOD_ITK, 
 		
 		
 		NULL };
@@ -1063,7 +1063,7 @@ static void register_hooks(apr_pool_t * p)
    		 NULL };
 
 
-	static const char *const aszSuc_itk[] = { "mpm_itk.c", NULL };
+	static const char *const aszSuc_itk[] = { MOD_ITK, NULL };
 	ap_hook_post_read_request(vhs_itk_post_read, NULL, aszSuc_itk, APR_HOOK_REALLY_FIRST);
 	//ap_hook_header_parser(vhs_itk_post_read, NULL, aszSuc_itk, -15);
 

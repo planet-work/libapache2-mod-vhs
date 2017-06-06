@@ -97,10 +97,11 @@
 /*
  *  Apache 2.4 per module log
  */
-#define MOD_ITK "itk.c"
 #ifdef APLOG_USE_MODULE
 APLOG_USE_MODULE(vhs);
 #define MOD_ITK "mpm_itk.c"
+#else
+#define MOD_ITK "itk.c"
 #endif 
 
 /*

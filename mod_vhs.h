@@ -1,7 +1,7 @@
 /*
  * Version of mod_vhs
  */
-#define VH_VERSION	"mod_vhs/2.0.0"
+#define VH_VERSION    "mod_vhs/2.0.0"
 
 #define SENDMAIL_PATH   "/etc/apache2/conf/sendmail-secure"
 #define OPEN_BASEDIR    "/usr/share/php:/etc/php5/:/tmp:/var/lib/php/"
@@ -155,32 +155,32 @@ typedef struct extension_info {
 #define AP_MAX_REG_MATCH 10
 
 typedef struct mod_vhs_request_t {
-    char *name;				/* ServerName or host accessed uppon request */
-    char *associateddomain;		/* The real server name */
-    char *admin;			/* ServerAdmin or email for admin */
-    char *docroot;			/* DocumentRoot */
-    char *uid;				/* Suexec Uid */
-    char *gid;				/* Suexec Gid */
-    int vhost_found;			/* set to 1 if the struct is field with vhost information, 0 if not, -1 if the vhost does not exist  */
+    char *name;                /* ServerName or host accessed uppon request */
+    char *associateddomain;        /* The real server name */
+    char *admin;            /* ServerAdmin or email for admin */
+    char *docroot;            /* DocumentRoot */
+    char *uid;                /* Suexec Uid */
+    char *gid;                /* Suexec Gid */
+    int vhost_found;            /* set to 1 if the struct is field with vhost information, 0 if not, -1 if the vhost does not exist  */
     char *mysql_socket;                 /* Path for MySQL socket */
     char *php_mode;                     /* Mode for PHP */
-    char *php_modules;			/* Modules for PHP */
+    char *php_modules;            /* Modules for PHP */
     apr_hash_t *php_config;     /* PHP Options for ini_set (Hashtable) */
     char *gecos;                     /* GECOS : username */
 
-	/* cache management */
-	int  usage;
-	unsigned  added;
-	char *json;
+    /* cache management */
+    int  usage;
+    unsigned  added;
+    char *json;
 } mod_vhs_request_t;
 
 /* The structure that is stored in shared memory */
 typedef struct {
-	unsigned int lastcleaned;
-	unsigned int counter;
-	char keys [100][100];
-	char entries [100][2048];
-	unsigned int added[100];
+    unsigned int lastcleaned;
+    unsigned int counter;
+    char keys [100][100];
+    char entries [100][2048];
+    unsigned int added[100];
 } vhs_cache_t;
 
 
@@ -188,49 +188,49 @@ typedef struct {
  * Configuration structure
  */
 typedef struct {
-	unsigned short int	enable;			/* Enable the module */
-	unsigned short int	db_mode;		/* Mode when module have dbd and ldap support */
-	char           		*path_prefix;		/* Prefix to add to path returned by database/ldap */
-	char           		*default_host;		/* Default host to redirect to */
+    unsigned short int    enable;            /* Enable the module */
+    unsigned short int    db_mode;        /* Mode when module have dbd and ldap support */
+    char                   *path_prefix;        /* Prefix to add to path returned by database/ldap */
+    char                   *default_host;        /* Default host to redirect to */
 
-	unsigned short int 	lamer_mode;		/* Lamer friendly mode */
-	unsigned short int 	log_notfound;		/* Log request for vhost/path is not found */
+    unsigned short int     lamer_mode;        /* Lamer friendly mode */
+    unsigned short int     log_notfound;        /* Log request for vhost/path is not found */
 
-	char           		*openbdir_path;		/* PHP open_basedir default path */
-	unsigned short int 	open_basedir;		/* PHP open_basedir */
-	unsigned short int 	append_basedir;		/* PHP append current directory to open_basedir */
-	unsigned short int 	display_errors;		/* PHP display_error */
-	unsigned short int 	phpopt_fromdb;		/* Get PHP options from database/ldap */
-    unsigned short int	itk_enable;			/* MPM-ITK support */
-	uid_t			itk_defuid;
-	gid_t			itk_defgid;
-	char			*itk_defusername;
+    char                   *openbdir_path;        /* PHP open_basedir default path */
+    unsigned short int     open_basedir;        /* PHP open_basedir */
+    unsigned short int     append_basedir;        /* PHP append current directory to open_basedir */
+    unsigned short int     display_errors;        /* PHP display_error */
+    unsigned short int     phpopt_fromdb;        /* Get PHP options from database/ldap */
+    unsigned short int    itk_enable;            /* MPM-ITK support */
+    uid_t            itk_defuid;
+    gid_t            itk_defgid;
+    char            *itk_defusername;
 
-	const char		         *tenant;
-	const char		         *db_host;
+    const char                 *tenant;
+    const char                 *db_host;
 
 
     unsigned       cache_ttl; 
     unsigned       cache_maxusage; 
     unsigned       cache_cleaninter; 
-	apr_global_mutex_t *cache_mutex;
-	apr_shm_t      *cache_shm; 
-	vhs_cache_t    *cache;   
-	char           *cache_mutex_lockfile;
-	char           *cache_shm_file;
+    apr_global_mutex_t *cache_mutex;
+    apr_shm_t      *cache_shm; 
+    vhs_cache_t    *cache;   
+    char           *cache_mutex_lockfile;
+    char           *cache_shm_file;
 
-	const char      *php_sessions;
-	const char      *php_sendmail;
+    const char      *php_sessions;
+    const char      *php_sendmail;
 
 
-	/*
-	 * From mod_alias.c
-	 */
-	apr_array_header_t		*aliases;
-	apr_array_header_t		*redirects;
-	/*
-	 * End of borrowing
-	 */
+    /*
+     * From mod_alias.c
+     */
+    apr_array_header_t        *aliases;
+    apr_array_header_t        *redirects;
+    /*
+     * End of borrowing
+     */
 } vhs_config_rec;
 
 
@@ -240,25 +240,25 @@ typedef struct {
  * From mod_alias.c
  */
 typedef struct {
-	const char     *real;
-	const char     *fake;
-	char           *handler;
+    const char     *real;
+    const char     *fake;
+    char           *handler;
 
 #if APR_MAJOR_VERSION > 0
-	ap_regex_t     *regexp;
+    ap_regex_t     *regexp;
 #else
 #ifdef DEBIAN
-	ap_regex_t     *regexp;
+    ap_regex_t     *regexp;
 #else
-	regex_t        *regexp;
+    regex_t        *regexp;
 #endif /* DEBIAN */
 #endif /* APR_MAJOR_VERSION */
-	int		redir_status;	/* 301, 302, 303, 410, etc... */
-}	alias_entry;
+    int        redir_status;    /* 301, 302, 303, 410, etc... */
+}    alias_entry;
 
 typedef struct {
-	apr_array_header_t *redirects;
-}	alias_dir_conf;
+    apr_array_header_t *redirects;
+}    alias_dir_conf;
 
 void * create_alias_dir_config(apr_pool_t * p, char *d);
 void * merge_alias_dir_config(apr_pool_t * p, void *basev, void *overridesv);
@@ -267,19 +267,19 @@ const char * add_alias_internal(cmd_parms * cmd, void *dummy, const char *f, con
 const char * add_alias(cmd_parms * cmd, void *dummy, const char *f, const char *r);
 const char * add_alias_regex(cmd_parms * cmd, void *dummy, const char *f, const char *r);
 const char * add_redirect_internal(cmd_parms * cmd, alias_dir_conf * dirconf,
-		                                  const char *arg1, const char *arg2,
-					  const char *arg3, int use_regex);
+                                          const char *arg1, const char *arg2,
+                      const char *arg3, int use_regex);
 const char * add_redirect(cmd_parms * cmd, void *dirconf,
-	                             const char *arg1, const char *arg2,
-				 const char *arg3);
+                                 const char *arg1, const char *arg2,
+                 const char *arg3);
 const char * add_redirect2(cmd_parms * cmd, void *dirconf,
-				  const char *arg1, const char *arg2);
+                  const char *arg1, const char *arg2);
 const char * add_redirect_regex(cmd_parms * cmd, void *dirconf,
-		                               const char *arg1, const char *arg2,
-				       const char *arg3);
+                                       const char *arg1, const char *arg2,
+                       const char *arg3);
 int alias_matches(const char *uri, const char *alias_fakename);
 char * try_alias_list(request_rec * r, apr_array_header_t * aliases,
-			     int doesc, int *status);
+                 int doesc, int *status);
 int fixup_redir(request_rec * r);
 
 

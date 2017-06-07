@@ -64,7 +64,7 @@
 
 #define VH_KEY "mod_vhs"
 #define MUTEX_LOCKFILE "/var/run/apache2/vhs_mutex.lock"
-#define MUTEX_FILE "/var/run/apache2/vhs_shm"
+#define MUTEX_FILE NULL
 
 int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname, mod_vhs_request_t * reqc);
 /*
@@ -117,8 +117,8 @@ static void *vhs_create_server_config(apr_pool_t * p, server_rec * s)
     vhr->php_sessions = REDIS_PATH;
     vhr->php_sendmail = SENDMAIL_PATH;
 
-        vhr->cache_mutex_lockfile = MUTEX_LOCKFILE; //apr_pstrdup(p, MUTEX_LOCKFILE);
-        vhr->cache_shm_file = NULL; //MUTEX_FILE; //ap_server_root_relative(p, MUTEX_FILE);
+    vhr->cache_mutex_lockfile = MUTEX_LOCKFILE; //apr_pstrdup(p, MUTEX_LOCKFILE);
+    vhr->cache_shm_file = MUTEX_FILE; //ap_server_root_relative(p, MUTEX_FILE);
     return (void *)vhr;
 }
 
@@ -181,9 +181,10 @@ static void *vhs_merge_server_config(apr_pool_t * p, void *parentv, void *childv
     conf->aliases = apr_array_append(p, child->aliases, parent->aliases);
     conf->redirects = apr_array_append(p, child->redirects, parent->redirects);
 
-        conf->cache_mutex_lockfile = parent->cache_mutex_lockfile;
-        //conf->cache_mutex = parent->cache_mutex;
-        //conf->cache_shm_file = parent->cache_shm_file;
+    conf->cache_mutex_lockfile = parent->cache_mutex_lockfile;
+
+    //conf->cache_mutex = parent->cache_mutex;
+    //conf->cache_shm_file = parent->cache_shm_file;
 
     return conf;
 }
@@ -297,35 +298,33 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
      * have to find out the base address of the segment, in case
      * it moved to a new address. */
 
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init  uig/euid = %i/%i",getuid(),geteuid());
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init: uig/euid = %i/%i",getuid(),geteuid());
 
     apr_status_t rv;
-    vhs_config_rec *vhr = ap_get_module_config(s->module_config,
-                                                    &vhs_module);
+    vhs_config_rec *vhr = ap_get_module_config(s->module_config, &vhs_module);
 
     if (!vhr->enable) {
-        VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init Module disabled");
+        VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init: Module disabled");
         return;
     }
 
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init ICI1 %s [@=%i]",vhr->cache_mutex_lockfile,&(vhr->cache_mutex));
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init: ICI1 %s [@=%i]",vhr->cache_mutex_lockfile,&(vhr->cache_mutex));
     if (!vhr->cache_mutex_lockfile) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, "mod_vhs global mutex file is NULL");
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, "vhs_child_init: mod_vhs global mutex file is NULL");
         return;
     }
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init ICI1a %s",vhr->cache_mutex_lockfile);
+    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init: ICI1a %s   vhr@=%i",vhr->cache_mutex_lockfile,&vhr);
     rv = apr_global_mutex_child_init(&(vhr->cache_mutex),
                                      vhr->cache_mutex_lockfile, p); 
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init ICI2");
-    VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init get global mutex");
 
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "Failed to attach to "
                      "mod_vhs global mutex file '%s'",
                      vhr->cache_mutex_lockfile);
         return;
-    }
-    //ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init: created mutex child uid/euid=%i/%i @=%u",getuid(),geteuid(),vhr->cache_mutex);
+    } else {
+       VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init: got global mutex [@=%i]",&(vhr->cache_mutex));
+   }
 
     /* We only need to attach to the segment if we didn't inherit
      * it from the parent process (ie. Windows) */
@@ -335,14 +334,13 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
         rv = apr_shm_attach(&vhr->cache_shm, vhr->cache_shm_file, p);
         if (rv != APR_SUCCESS) {
             ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "Failed to attach to "
-                         "mod_shm_counter shared memory file '%s'",
+                         "mod_vhs shared memory file '%s'",
                          vhr->cache_shm_file ?
                              /* Just in case the file was NULL. */
                              vhr->cache_shm_file : "NULL");
             return;
         }
     }
-
     vhr->cache = apr_shm_baseaddr_get(vhr->cache_shm);
 }
 
@@ -354,7 +352,7 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
  */
 static int vhs_init_handler(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, server_rec * s)
 {
-        module *mpm_itk_module = NULL;
+     module *mpm_itk_module = NULL;
     VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_init_handler: loading version %s.", VH_VERSION);
 
     ap_add_version_component(pconf, VH_VERSION);
@@ -439,6 +437,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
     int res;
     struct vhost_config *p;
     uid_t uid = 65534;
+    apr_status_t rv;
 
 
     // TODO CACHE
@@ -453,12 +452,11 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
     if (!vhr->enable) {
         return DECLINED;
     }
-
     if (reqc->vhost_found != VH_VHOST_INFOS_NOT_YET_REQUESTED) {
          return OK;
     }
-
-    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup -------------------%s--------------------",r->hostname);
+    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup -------------------%s [%i]--------------------",r->hostname, &vhr);
+    reqc->usage += 1;
 
     if (r->hostname == NULL)
         host = vhr->default_host;
@@ -476,6 +474,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
     unsigned now = (unsigned)time(NULL);
 
     if (vhr->cache_mutex != NULL) {
+        VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: looking for cache host='%s'",host);
         for (i = 0; i < sizeof(vhr->cache->added); i++) {
            if (now - vhr->cache->added[i] < vhr->cache_ttl && memcmp(host,&vhr->cache->keys[i],strlen(host)) == 0) {
                cache_conf = apr_pcalloc(r->pool, sizeof(vhr->cache->entries[i]));
@@ -484,7 +483,9 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhr, const char *hostname
                break;
            }
         }
-    }
+    } else {
+        VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: no cache mutex '%s'",host);
+    } 
 
     if (cache_conf != NULL && strlen(cache_conf) > 10) {
         res = vhost_parseconfline(cache_conf, p, r->pool);
@@ -619,19 +620,35 @@ static int vhs_itk_post_read(request_rec * r)
 
     vhs_config_rec *vhr = (vhs_config_rec *) ap_get_module_config(r->server->module_config,
                                       &vhs_module);
-    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: BEGIN ***");
+    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: BEGIN *** main@=%i, @=%i",r->prev, r);
+
+    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read:  ****** Trying to get global Mutex *****");
+    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: vhr @=%i, mutex @=%i", vhr,&(vhr->cache_mutex));
+    
 
     mod_vhs_request_t *reqc;
 
     reqc = ap_get_module_config(r->request_config, &vhs_module);
-    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: BEGIN2 uid=%d",getuid());
+    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: BEGIN2 uid=%d, req pool @=%i, req_conf @=%i",getuid(),r->pool,r->request_config);
 
+    if (reqc) {
+         VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: subrequest reqc->added=%i", reqc->added);
+         return OK;
+    }
 
-    if (reqc || getuid() >= 1000)
+    if (getuid() >= 1000 && r->prev) { 
+        reqc = ap_get_module_config(r->prev->request_config, &vhs_module);
+        if (reqc) {
+            VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: subrequest for req_conf logid=%s", r->hostname, reqc->added);
+            ap_set_module_config(r->request_config, &vhs_module, reqc);
+        }            
         return OK;
+    }
 
     reqc = (mod_vhs_request_t *) apr_pcalloc(r->pool, sizeof(mod_vhs_request_t));
     reqc->vhost_found = VH_VHOST_INFOS_NOT_YET_REQUESTED;
+    reqc->added = time(NULL);
+    VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: reqc->added=%i",reqc->added );
     ap_set_module_config(r->request_config, &vhs_module, reqc);
 
     VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_itk_post_read: Getting host config for %s", r->hostname);

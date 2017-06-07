@@ -43,13 +43,12 @@ RewriteRule . /index.php [L]
 # END WordPress
 EOF
 
-curl -H 'Host: www.website.com'  http://127.0.0.1/
-POSTURL=$(/usr/local/bin/wp post list --field=url)
+/usr/local/bin/wp --allow-root option set permalink_structure '/%year%/%monthnum%/%day%/%postname%/'
+curl -H 'Host: www.website.com'  http://127.0.0.1/ | grep "Just another WordPress site"
+POSTURL=$(/usr/local/bin/wp --allow-root post list --field=url)
 echo $POSTURL
 echo ${POSTURL/www.website.com/127.0.0.1}
 echo "************************************************"
-curl -H 'Host: www.website.com'  $POSTURL | grep bonjour
-echo "************************************************"
-curl -H 'Host: www.website.com'  ${POSTURL/www.website.com/127.0.0.1} | grep bonjour
+curl -v -H 'Host: www.website.com'  ${POSTURL/www.website.com/127.0.0.1} >/dev/null
 
 exit 0

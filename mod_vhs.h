@@ -170,17 +170,18 @@ typedef struct mod_vhs_request_t {
 
     /* cache management */
     int  usage;
-    unsigned  added;
+    unsigned  long added;
     char *json;
 } mod_vhs_request_t;
 
 /* The structure that is stored in shared memory */
 typedef struct {
-    unsigned int lastcleaned;
+    unsigned long lastcleaned;
     unsigned int counter;
-    char keys [100][100];
-    char entries [100][2048];
-    unsigned int added[100];
+    char keys [100][200];
+    char entries [100][4096];
+    unsigned long added[100];
+    char wildcards[4096];
 } vhs_cache_t;
 
 
@@ -222,6 +223,7 @@ typedef struct {
     const char      *php_sessions;
     const char      *php_sendmail;
 
+    int              conf_id;
 
     /*
      * From mod_alias.c

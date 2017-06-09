@@ -17,6 +17,7 @@
 #include "apr_poll.h"
 #include <hiredis/hiredis.h>
 #include <json-c/json.h>
+#include <fnmatch.h>
 
 #include "vhosts_db_redis.h"
 
@@ -204,7 +205,7 @@ int vhost_parseconfig(const char *json_data,struct vhost_config *conf,apr_pool_t
 }
 
 
-int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *conf,apr_pool_t * p) {
+int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *conf, apr_pool_t *p) {
     char *json_data;
 
     redisReply *reply;
@@ -231,4 +232,65 @@ int vhost_getconfig(const char *tenant, const char *host, struct vhost_config *c
     redisFree(redis_context);
 
     return vhost_parseconfig(json_data,conf,p);
+}
+
+int vhost_getwildcards(const char *tenant, char **wildcards, apr_pool_t *p) {
+    redisReply *reply;
+    int j;
+    int sz;
+    int pos;
+    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+
+    redis_context = redisConnectUnixWithTimeout(REDIS_SOCKET, timeout);
+    if (redis_context == NULL || redis_context->err) {
+        redisFree(redis_context);
+        return 1;
+    }
+
+    reply = redisCommand(redis_context,"KEYS WEBHOST/v1/*\\**");
+
+    if (reply->type == REDIS_REPLY_ARRAY) {
+        sz = 0;
+        pos = 0;
+        for (j = 0; j < reply->elements; j++) {
+            sz += strlen(reply->element[j]->str)-10;
+        }
+        *wildcards = apr_pcalloc(p, sz);
+        for (j = 0; j < reply->elements; j++) {
+            strcpy(*wildcards+pos, reply->element[j]->str+11);
+            pos += strlen(reply->element[j]->str+11);
+            if (j < reply->elements - 1) {
+                strcpy(*wildcards+pos, ";");
+                pos += 1;
+            }
+        }
+    } else {
+        freeReplyObject(reply);
+        redisFree(redis_context);
+        return 2;
+    }
+
+    freeReplyObject(reply);
+    redisFree(redis_context);
+    return 0;
+}
+
+int vhost_getconfig_glob(const char *tenant, const char *host, struct vhost_config *conf, apr_pool_t *p, const char *wildcards) {
+   char * wc;
+   if (wildcards == NULL || strlen(wildcards) < 4) {
+        return 2;
+   }
+
+   char* w_copy = strdup(wildcards);
+   wc = strtok (w_copy,";");
+   while (wc != NULL) {
+       if (fnmatch(wc, host, 0) == 0) {
+            int res = vhost_getconfig(tenant, wc, conf, p);
+            free(w_copy);
+            return res;
+       }
+       wc = strtok (NULL, ";");
+   }
+   free(w_copy);
+   return 2;
 }

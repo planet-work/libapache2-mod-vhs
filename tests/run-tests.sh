@@ -51,4 +51,12 @@ echo ${POSTURL/www.website.com/127.0.0.1}
 echo "************************************************"
 curl -v -H 'Host: www.website.com'  ${POSTURL/www.website.com/127.0.0.1} >/dev/null
 
+echo "************************************************"
+cat /var/log/apache2/access.log
+echo "************************************************"
+cat /var/log/apache2/error.log
+echo "************************************************"
+
+cat /home/testuser/public_html/www/.htaccess
+
 exit 0

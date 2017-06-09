@@ -21,7 +21,7 @@ pipeline:
       - apache2 -v | grep "2\.2" && cp tests/apache-custom.conf /etc/apache2/conf.d/custom || cp tests/apache-custom.conf /etc/apache2/conf-available/custom.conf
       - apache2ctl -L | grep -q EnableCapabilities && echo "EnableCapabilities Off" >> /etc/apache2/conf-available/custom.conf
       - perl -pi -e "s/vhs_ConsulHost/vhs_RedisHost/" /etc/apache2/mods-available/vhs.conf
-      - dpkg -l | grep -q libapache2-mpm-itk && a2enmod mpm_itk && a2enconf custom ; a2enmod vhs && apache2ctl restart
+      - dpkg -l | grep -q libapache2-mpm-itk && a2enmod mpm_itk && a2enconf custom ; a2enmod vhs && a2enmod rewrite && apache2ctl restart
       - apache2 -v | grep "2\.2" && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server || DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server
       - echo "[mysqld]" > /etc/mysql/conf.d/noauth.cnf && echo "skip-grant-tables" >> /etc/mysql/conf.d/noauth.cnf && service mysql restart
       - bash -x tests/setup-tests.sh
@@ -30,7 +30,7 @@ pipeline:
       - exit 1
     when:
       local: true
-      #event: DISABLED 
+      event: DISABLED 
 
   build:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}

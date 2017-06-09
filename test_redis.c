@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     res = vhost_getwildcards(getenv("TENANT"), &wildcards, p);
     printf(">> %s\n", wildcards);
    
-    host = "xcxx.yyyY.zzz.annonz.com";
+    host = "xyz.wildcards.com";
     res = vhost_getconfig_glob(getenv("TENANT"), host, conf, p, wildcards);
     if (res != 0) {
         printf("ERROR, no conf found\n");

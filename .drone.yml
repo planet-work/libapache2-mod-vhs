@@ -55,7 +55,7 @@ pipeline:
   pkg-suffix:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
     commands:
-        - dch -l ~`lsb_release -r -s | cut -d'.' -f1`u   `git rev-parse HEAD | cut -c1-8`
+        - dch -l ~deb`lsb_release -r -s | cut -d'.' -f1`u   `git rev-parse HEAD | cut -c1-8`
     when:
       event: tag
 

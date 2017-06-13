@@ -2,6 +2,7 @@
 
 set -e
 
+FAILURE=0
 
 capsh  --print
 
@@ -11,8 +12,9 @@ id testuser
 
 #dpkg -l libapache2-mpm-itk | grep 2.4.7-02 && capsh --supports=CAP_DAC_READ_SEARCH || (echo "ERROR: No CAP_DAC_READ_SEARCH Capability";  exit 0)
 
-curl -H 'Host: www.website.com'  http://127.0.0.1/system.php
-curl -H 'Host: nowebsite.com'  http://127.0.0.1/
+curl -H 'Host: www.website.com'  http://127.0.0.1/system.php || FAILURE=1
+curl -H 'Host: nowebsite.com'  http://127.0.0.1/ || FAILURE=1
+curl -H 'Host: xxxx.website.com'  http://127.0.0.1/ || FAILURE=1
 
 echo "=== All tests passed ===="
 
@@ -54,9 +56,7 @@ curl -v -H 'Host: www.website.com'  ${POSTURL/www.website.com/127.0.0.1} >/dev/n
 echo "************************************************"
 cat /var/log/apache2/access.log
 echo "************************************************"
-cat /var/log/apache2/error.log
+[ $FAILURE == 1 ] && cat /var/log/apache2/error.log
 echo "************************************************"
-
-cat /home/testuser/public_html/www/.htaccess
 
 exit 0

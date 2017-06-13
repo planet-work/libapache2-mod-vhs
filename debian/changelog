@@ -1,10 +1,11 @@
-libapache2-mod-vhs (2.1-1) UNRELEASED; urgency=medium
+libapache2-mod-vhs (2.2-1) UNRELEASED; urgency=medium
 
   * PHP7 support 
   * big cleanups
   * Redis DB support, removed all other databases code
   * local cache 
   * new Apache configuration variable
+  * wildcard support
 
  -- Frédéric VANNIÈRE <f.vanniere@planet-work.com>  Fri, 18 Mar 2016 13:42:00 +0100
 

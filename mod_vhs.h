@@ -17,6 +17,9 @@
 
 #define VH_DEBUG 1
 
+
+#define NUMCACHE 100
+
 /*
  * Define this if you have Linux/Debian since it seems to have non standards
  * includes
@@ -178,9 +181,9 @@ typedef struct mod_vhs_request_t {
 typedef struct {
     unsigned long lastcleaned;
     unsigned int counter;
-    char keys [100][200];
-    char entries [100][4096];
-    unsigned long added[100];
+    char keys [NUMCACHE][200];
+    char entries [NUMCACHE][4096];
+    unsigned long added[NUMCACHE];
     char wildcards[4096];
 } vhs_cache_t;
 

@@ -434,7 +434,7 @@ static int vhs_global_init(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * p
        Initialize cache structure
     */
     int i = 0;
-    for (i = 0; i< sizeof(vhr->cache->added); i++) {
+    for (i = 0; i < NUMCACHE; i++) {
         vhr->cache->added[i] = 0;
         memset(&vhr->cache->keys[i],'\0',sizeof(vhr->cache->keys[i]));
         memset(&vhr->cache->entries[i],'\0',sizeof(vhr->cache->entries[i]));
@@ -505,7 +505,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhrX, const char *hostnam
 
     if (vhr->cache_mutex != NULL) {
         VH_AP_LOG_RERROR(APLOG_MARK, APLOG_DEBUG, 0, r, "vhs_redis_lookup: looking for cache host='%s'",host);
-        for (i = 0; i < sizeof(vhr->cache->added); i++) {
+        for (i = 0; i < NUMCACHE; i++) {
            if (now - vhr->cache->added[i] < vhr->cache_ttl && memcmp(host,&vhr->cache->keys[i],strlen(host)) == 0) {
                cache_conf = apr_pcalloc(r->pool, sizeof(vhr->cache->entries[i]));
                memcpy(cache_conf,&vhr->cache->entries[i],sizeof(vhr->cache->entries[i]));
@@ -626,7 +626,7 @@ int vhs_redis_lookup(request_rec * r, vhs_config_rec * vhrX, const char *hostnam
                 ap_log_rerror(APLOG_MARK, APLOG_DEBUG, rv, r, "vhs_redis_lookup: apr_global_mutex_lock SUCCESS for cache uid/euid=%i/%i",getuid(),geteuid());
 
                 // Add json to cache
-                for (i = 0; i<sizeof(vhr->cache->added); i++) {
+                for (i = 0; i < NUMCACHE; i++) {
                     if (vhr->cache->added[i] == 0 || (now - vhr->cache->added[i] > vhr->cache_ttl)) {
                         vhr->cache->added[i] = now;
                         memcpy(&vhr->cache->keys[i],host,strlen(host));

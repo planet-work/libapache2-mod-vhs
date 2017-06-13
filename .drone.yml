@@ -52,7 +52,14 @@ pipeline:
       - valgrind ./test_redis website.com
       - make clean
 
-  testing-suffix:
+  pkg-suffix:
+    image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
+    commands:
+        - dch -l ~`lsb_release -r -s | cut -d'.' -f1`u   `git rev-parse HEAD | cut -c1-8`
+    when:
+      event: tag
+
+  pkg-suffix-testing:
     image: dock.pw.fr/pw/debpkg:${DEBIAN_VERSION}
     commands:
         - dch -l ~build`date +"%y%m%d%H%M"`deb`lsb_release -r -s | cut -d'.' -f1`u   `git rev-parse HEAD | cut -c1-8`

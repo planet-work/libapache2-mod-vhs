@@ -1,4 +1,4 @@
-libapache2-mod-vhs (2.2-4) UNRELEASED; urgency=medium
+libapache2-mod-vhs (2.2-5) UNRELEASED; urgency=medium
 
   * PHP7 support 
   * big cleanups
@@ -6,6 +6,7 @@ libapache2-mod-vhs (2.2-4) UNRELEASED; urgency=medium
   * local cache 
   * new Apache configuration variable
   * wildcard support
+  * USER env variable for CGI scripts
 
  -- Frédéric VANNIÈRE <f.vanniere@planet-work.com>  Fri, 18 Mar 2016 13:42:00 +0100
 

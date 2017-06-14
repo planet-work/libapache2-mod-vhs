@@ -47,6 +47,7 @@
 #include "apr_thread_mutex.h"
 #include "apr_global_mutex.h"
 #include "apr_shm.h"
+#include "unixd.h"
 
 #if APR_MAJOR_VERSION > 0
 #include "apr_regexp.h"

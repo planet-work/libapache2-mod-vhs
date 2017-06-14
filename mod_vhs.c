@@ -334,7 +334,6 @@ static void vhs_child_init(apr_pool_t *p, server_rec *s)
     } else {
        VH_AP_LOG_ERROR(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_child_init: got global mutex");
    }
-   //ap_unixd_set_proc_mutex_perms(vhr->cache_mutex);
 
     /* We only need to attach to the segment if we didn't inherit
      * it from the parent process (ie. Windows) */
@@ -418,7 +417,7 @@ static int vhs_global_init(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * p
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 // Apache 2.4 Only
-#ifdef AP_NEED_SET_MUTEX_PERMS
+#ifdef APLOG_USE_MODULE
     rv = ap_unixd_set_global_mutex_perms(vhr->cache_mutex);
 	if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s,

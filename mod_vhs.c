@@ -748,6 +748,7 @@ static int vhs_itk_post_read(request_rec * r)
     apr_table_setn(r->subprocess_env, "PHP_DOCUMENT_ROOT", reqc->docroot);
     apr_table_setn(r->subprocess_env, "MYSQL_UNIX_PORT", reqc->mysql_socket);
     apr_table_setn(r->subprocess_env, "MYSQL_HOST", basename(reqc->mysql_socket));
+    apr_table_setn(r->subprocess_env, "USER", cfg->username);
     /*
     char *phprc = apr_pcalloc(r->pool,512);
     sprintf(phprc, "/home/php_ini/%s/", reqc->associateddomain);

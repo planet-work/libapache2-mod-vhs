@@ -191,7 +191,7 @@ static void *vhs_merge_server_config(apr_pool_t * p, void *parentv, void *childv
 
     conf->conf_id = (child->conf_id ? child->conf_id : parent->conf_id);
     conf->conf_id = parent->conf_id;
-    conf->cache_mutex_lockfile = parent->cache_mutex_lockfile;
+    conf->cache_#mutex_lockfile = parent->cache_mutex_lockfile;
 
     //conf->cache_mutex = parent->cache_mutex;
     //conf->cache_shm_file = parent->cache_shm_file;
@@ -418,8 +418,14 @@ static int vhs_global_init(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * p
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 // Apache 2.4 Only
-#ifdef APLOG_USE_MODULE
-    ap_unixd_set_global_mutex_perms(vhr->cache_mutex);
+#ifdef AP_NEED_SET_MUTEX_PERMS
+    rv = ap_unixd_set_global_mutex_perms(vhr->cache_mutex);
+	if (rv != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s,
+		             "Failed to set permissions on session table lock;"
+		             " check User and Group directives");
+		return rv;
+	}
 #endif
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_global_init: created mutex uid/euid=%i/%i",getuid(),geteuid());
 

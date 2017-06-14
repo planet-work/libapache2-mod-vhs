@@ -417,7 +417,10 @@ static int vhs_global_init(apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * p
                                         "mod_vhs global mutex file '%s'",vhr->cache_mutex_lockfile);
         return HTTP_INTERNAL_SERVER_ERROR;
     }
+// Apache 2.4 Only
+#ifdef APLOG_USE_MODULE
     ap_unixd_set_global_mutex_perms(vhr->cache_mutex);
+#endif
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "vhs_global_init: created mutex uid/euid=%i/%i",getuid(),geteuid());
 
 
